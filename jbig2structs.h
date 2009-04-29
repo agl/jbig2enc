@@ -29,55 +29,8 @@ enum {
   segment_end_of_file = 51
 };
 
-// note that the < 1 byte fields are packed from the LSB upwards.
-struct jbig2_segment {
-  u32 number;
-#ifndef _BIG_ENDIAN
-  unsigned type : 6;
-  unsigned page_assoc_size : 1;
-  unsigned deferred_non_retain : 1;
-#else
-  unsigned deferred_non_retain : 1;
-  unsigned page_assoc_size : 1;
-  unsigned type : 6;
-#endif
-
-#ifndef _BIG_ENDIAN
-  unsigned retain_bits : 5;
-  unsigned segment_count : 3;
-#else
-  unsigned segment_count : 3;
-  unsigned retain_bits : 5;
-#endif
-  u8 page;
-  u32 len;
-} __attribute__((packed));
-
-struct jbig2_segment_referring {
-  u32 number;
-#ifndef _BIG_ENDIAN
-  unsigned type : 6;
-  unsigned page_assoc_size : 1;
-  unsigned deferred_non_retain : 1;
-#else
-  unsigned deferred_non_retain : 1;
-  unsigned page_assoc_size : 1;
-  unsigned type : 6;
-#endif
-
-#ifndef _BIG_ENDIAN
-  unsigned retain_bits : 5;
-  unsigned segment_count : 3;
-#else
-  unsigned segment_count : 3;
-  unsigned retain_bits : 5;
-#endif
-} __attribute__((packed));
-
-struct jbig2_segment_referring_trailer {
-  u8 page;
-  u32 len;
-} __attribute__((packed));
+// note that the < 1 byte fields are packed from the LSB upwards - unless
+// you're bigendian, in which case they are packed MSB downwards. Joy.
 
 #define JBIG2_FILE_MAGIC "\x97\x4a\x42\x32\x0d\x0a\x1a\x0a"
 

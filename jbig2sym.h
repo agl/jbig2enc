@@ -26,12 +26,14 @@ struct jbig2enc_ctx;
 // symbols: A 2d array. The first dimention is of different classes of symbols.
 //          Then, for each class, there are all the examples of that class. The
 //          first member of the class is taken as the exemplar.
+// symbol_list: a list of symbols to encode
 // symmap: an empty map which is filled. The symbols are written to the file in
 //         a different order than they are given in symbols. The maps an index
 //         into the symbols array to a symbol number in the file
 // -----------------------------------------------------------------------------
 void jbig2enc_symboltable(struct jbig2enc_ctx *__restrict__ ctx,
                           PIXA *__restrict__ const symbols,
+                          std::vector<unsigned> *__restrict__ symbol_list,
                           std::map<int, int> *symmap);
 
 // -----------------------------------------------------------------------------
@@ -42,6 +44,8 @@ void jbig2enc_symboltable(struct jbig2enc_ctx *__restrict__ ctx,
 //
 // symmap: This maps class numbers to symbol numbers. Only symbol numbers
 //         appear in the JBIG2 data stream
+// symmap2: If not found in the first symmap, try this one
+// comps: a list of connected-component numbers for this page
 // ll: This is an array of the lower-left corners of the boxes for each symbol
 // assignments: an array, of the same length as boxes, mapping each box to a
 //              symbol
@@ -58,6 +62,7 @@ void jbig2enc_symboltable(struct jbig2enc_ctx *__restrict__ ctx,
 // -----------------------------------------------------------------------------
 void jbig2enc_textregion(struct jbig2enc_ctx *__restrict__ ctx,
                          /*const*/ std::map<int, int> &symmap,
+                         /*const*/ std::map<int, int> &symmap2,
                          const std::vector<int> &comps,
                          PTA *const ll, PIXA *const symbols,
                          NUMA *assignments,

@@ -229,13 +229,13 @@ lblock:
 // A merging of the ENCODE, CODELPS and CODEMPS procedures from the standard
 // -----------------------------------------------------------------------------
 static void
-encode_bit(struct jbig2enc_ctx *restrict ctx, u8 *restrict context, u16 ctxnum, u8 d) {
+encode_bit(struct jbig2enc_ctx *restrict ctx, u8 *restrict context, u32 ctxnum, u8 d) {
   const u8 i = context[ctxnum];
   const u8 mps = i > 46 ? 1 : 0;
   const u16 qe = ctbl[i].qe;
 
 #ifdef CODER_DEBUGGING
-  fprintf(stderr, "B: %d %d %d\n", qe, ctx->a, d);
+    fprintf(stderr, "B: %d %d %d %d\n", ctxnum, qe, ctx->a, d);
 #endif
 
 #ifdef TRACE
@@ -341,8 +341,8 @@ static struct intencrange_s intencrange[] = {
   {-339,-84,15,5, 84, 8},
   {340,4435,30,6, 340, 12},
   {-4435,-340,31,6,340, 12},
-  {4436,100000,62,6,4436, 32},
-  {-100000,-4436,63,6,4436, 32}
+  {4436,2000000000,62,6,4436, 32},
+  {-2000000000,-4436,63,6,4436, 32}
 };
 
 // see comments in .h file
@@ -362,7 +362,7 @@ jbig2enc_int(struct jbig2enc_ctx *restrict ctx, int proc, int value) {
   u8 *const context = ctx->intctx[proc];
   int i;
 
-  if (value > 100000 || value < -100000) abort();
+  if (value > 2000000000 || value < -2000000000) abort();
 
   u32 prev = 1;
 

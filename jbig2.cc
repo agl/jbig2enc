@@ -31,6 +31,7 @@ static void
 usage(const char *argv0) {
   fprintf(stderr, "Usage: %s [options] <input filenames...>\n", argv0);
   fprintf(stderr, "Options:\n");
+  fprintf(stderr, "  -b <basename>: output file root name when using symbol coding\n");
   fprintf(stderr, "  -d --duplicate-line-removal: use TPGD in generic region coder\n");
   fprintf(stderr, "  -p --pdf: produce PDF ready data\n");
   fprintf(stderr, "  -s --symbol-mode: use text region, not generic coder\n");
@@ -52,9 +53,17 @@ main(int argc, char **argv) {
   bool refine = false;
   bool up2 = false, up4 = false;
   const char *output_threshold = NULL;
+  const char *basename = "output";
   int i;
 
   for (i = 1; i < argc; ++i) {
+    if (strcmp(argv[i], "-b") == 0 ||
+        strcmp(argv[i], "--basename") == 0) {
+      basename = argv[i+1];
+      i++;
+      continue;
+    }
+
     if (strcmp(argv[i], "-d") == 0 ||
         strcmp(argv[i], "--duplicate-line-removal") == 0) {
       duplicate_line_removal = true;
@@ -203,7 +212,9 @@ main(int argc, char **argv) {
   int length;
   ret = jbig2_pages_complete(ctx, &length);
   if (pdfmode) {
-    const int fd = open("symboltable", O_WRONLY | O_TRUNC | O_CREAT, 0600);
+    char *filename;
+    asprintf(&filename, "%s.sym", basename);
+    const int fd = open(filename, O_WRONLY | O_TRUNC | O_CREAT, 0600);
     if (fd < 0) abort();
     write(fd, ret, length);
     close(fd);
@@ -216,7 +227,7 @@ main(int argc, char **argv) {
     ret = jbig2_produce_page(ctx, i, -1, -1, &length);
     if (pdfmode) {
       char *filename;
-      asprintf(&filename, "page-%d", i);
+      asprintf(&filename, "%s.%04d", basename, i);
       const int fd = open(filename, O_WRONLY | O_CREAT | O_TRUNC, 0600);
       if (fd < 0) abort();
       write(fd, ret, length);

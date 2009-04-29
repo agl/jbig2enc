@@ -74,18 +74,18 @@ static const int kBorderSize = 6;
 // see comment in .h file
 void
 jbig2enc_symboltable(struct jbig2enc_ctx *restrict ctx,
-                     PIXA *restrict const symbols, std::map<int, int> *symmap) {
-  const unsigned n = symbols->n;
+                     PIXA *restrict const symbols,
+                     std::vector<unsigned> *__restrict__ symbol_list,
+                     std::map<int, int> *symmap) {
+  const unsigned n = symbol_list->size();
   int number = 0;
 
 #ifdef JBIG2_DEBUGGING
   fprintf(stderr, "  symbols: %d\n", n);
 #endif
 
-  // this is a vector of indexed into symbols
-  std::vector<int> syms(n);
-  // fill the vector with the index of each symbol
-  iota(syms.begin(), syms.end(), 0);
+  // this is a vector of indexes into symbols
+  std::vector<unsigned> syms(*symbol_list);
   // now sort that vector by height
   std::sort(syms.begin(), syms.end(), HeightSorter(symbols));
 
@@ -150,6 +150,7 @@ jbig2enc_symboltable(struct jbig2enc_ctx *restrict ctx,
   // now we have the list of exported symbols (which is all of them)
   // it's run length encoded and we have a run length of 0 (for all the symbols
   // which aren't set) followed by a run length of the number of symbols
+
   jbig2enc_int(ctx, JBIG2_IAEX, 0);
   jbig2enc_int(ctx, JBIG2_IAEX, n);
 
@@ -194,6 +195,7 @@ class XSorter {  // concept: stl/StrictWeakOrdering
 void
 jbig2enc_textregion(struct jbig2enc_ctx *restrict ctx,
                     /*const*/ std::map<int, int> &symmap,
+                    /*const*/ std::map<int, int> &symmap2,
                     const std::vector<int> &comps,
                     PTA *const in_ll,
                     PIXA *const symbols,
@@ -320,7 +322,27 @@ jbig2enc_textregion(struct jbig2enc_ctx *restrict ctx,
 
       // the symmap maps the number of the symbol from the classifier to the
       // order in while it was written in the symbol dict
-      const int symid = symmap[assigned];
+
+      // We have two symbol dictionaries. A global one and a per-page one.
+      int symid;
+      std::map<int, int>::const_iterator symit = symmap.find(assigned);
+      if (symit != symmap.end()) {
+        symid = symit->second;
+      } else {
+        symit = symmap2.find(assigned);
+        if (symit != symmap2.end()) {
+          symid = symit->second + symmap.size();
+        } else {
+          for (symit = symmap.begin(); symit != symmap.end(); ++symit) {
+            fprintf(stderr, "%d ", symit->first);
+          }
+          for (symit = symmap2.begin(); symit != symmap2.end(); ++symit) {
+            fprintf(stderr, "%d ", symit->first);
+          }
+          fprintf(stderr, "\n%d\n", assigned);
+          abort();
+        }
+      }
 #ifdef SYM_DEBUGGING
       fprintf(stderr, "sym: %d\n", symid);
 #endif

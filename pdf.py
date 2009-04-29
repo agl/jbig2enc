@@ -1,6 +1,8 @@
 import sys
 import re
 import struct
+import glob
+import os
 
 # This is a very simple script to make a PDF file out of the output of a
 # multipage symbol compression.
@@ -81,38 +83,39 @@ class Doc:
       add(str(o))
     xrefstart = j[0]
     a.append('xref')
-    a.append('0 %d' % len(offsets))
+    a.append('0 %d' % (len(offsets) + 1))
     a.append('0000000000 65535 f ')
     for o in offsets:
       a.append('%010d 00000 n ' % o)
     a.append('')
     a.append('trailer')
-    a.append('<< /Size %d\n/Root 1 0 R >>' % len(offsets))
+    a.append('<< /Size %d\n/Root 1 0 R >>' % (len(offsets) + 1))
     a.append('startxref')
     a.append(str(xrefstart))
     a.append('%%EOF')
 
-    sys.stderr.write(str(offsets) + "\n")
+    # sys.stderr.write(str(offsets) + "\n")
 
     return '\n'.join(a)
 
 def ref(x):
   return '%d 0 R' % x
 
-def main():
+def main(symboltable='symboltable', pagefiles=glob.glob('page-*')):
   doc = Doc()
   doc.add_object(Obj({'Type' : '/Catalog', 'Outlines' : ref(2), 'Pages' : ref(3)}))
   doc.add_object(Obj({'Type' : '/Outlines', 'Count': '0'}))
   pages = Obj({'Type' : '/Pages'})
   doc.add_object(pages)
-  symd = doc.add_object(Obj({}, file('symboltable', 'r').read()))
+  symd = doc.add_object(Obj({}, file(symboltable, 'r').read()))
   page_objs = []
 
-  for n in range(1000):
+  for p in pagefiles:
     try:
-      contents = file('page-%d' % n).read()
+      contents = file(p).read()
     except IOError:
-      break
+      sys.stderr.write("error reading page file %s\n"% p)
+      continue
     (width, height) = struct.unpack('>II', contents[11:19])
     xobj = Obj({'Type': '/XObject', 'Subtype': '/Image', 'Width':
         str(width), 'Height': str(height), 'ColorSpace': '/DeviceGray',
@@ -133,5 +136,28 @@ def main():
 
   print str(doc)
 
+
+def usage(script, msg):
+  if msg:
+    sys.stderr.write("%s: %s\n"% (script, msg))
+  sys.stderr.write("Usage: %s [file_basename] > out.pdf\n"% script)
+  sys.exit(1)
+  
+  
 if __name__ == '__main__':
-  main()
+
+  if len(sys.argv) == 2:
+    sym = sys.argv[1] + '.sym'
+    pages = glob.glob(sys.argv[1] + '.[0-9]*')
+  elif len(sys.argv) == 1:
+    sym = 'symboltable'
+    pages = glob.glob('page-*')
+  else:
+    usage(sys.argv[0])
+
+  if not os.path.exists(sym):
+    usage("symbol table %s not found!"% sym)
+  elif len(pages) == 0:
+    usage("no pages found!")
+  
+  main(sym, pages)

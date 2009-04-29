@@ -33,6 +33,7 @@
 #include "jbig2arith.h"
 #include "jbig2sym.h"
 #include "jbig2structs.h"
+#include "jbig2segments.h"
 #include <netinet/in.h>
 
 #include <sys/time.h>
@@ -87,7 +88,13 @@ struct jbig2ctx {
   int symtab_segment;  // the segment number of the symbol table
   // a map from page number a list of components for that page
   std::map<int, std::vector<int> > pagecomps;
+  // for each page, the list of symbols which are only used on that page
+  std::map<int, std::vector<unsigned> > single_use_symbols;
+  // the number of symbols in the global symbol table
+  int num_global_symbols;
   std::vector<int> page_width, page_height;
+  // Used to store the mapping from symbol number to the index in the global
+  // symbol dictionary.
   std::map<int, int> symmap;
   bool refinement;
   int refine_level;
@@ -164,19 +171,62 @@ jbig2_add_page(struct jbig2ctx *ctx, struct Pix *input) {
 
 #define F(x) memcpy(ret + offset, &x, sizeof(x)) ; offset += sizeof(x)
 #define G(x, y) memcpy(ret + offset, x, y); offset += y;
+#define SEGMENT(x) x.write(ret + offset); offset += x.size();
 
 // see comments in .h file
 uint8_t *
 jbig2_pages_complete(struct jbig2ctx *ctx, int *const length) {
-  // our first task is to build the pagecomps map: a map from page number to
-  // the list of connected components for that page.
-  // the classer gives us an array from connected component number to page
-  // number - we just have to reverse it
+  // We find the symbols which only appear on a single page and encode them in
+  // a symbol dictionary just for that page. This is because we want to keep
+  // the size of the global dictionary down as some PDF readers appear to
+  // decode it for every page (!)
+
+  // (as a short cut, we just pick the symbols which are only used once since,
+  // in testing, all the symbols which appear on only one page appear only once
+  // on that page)
+
+  // maps symbol number to the number of times it has been used
+  // pixat->n is the number of symbols
+  // naclass->n is the number of connected components
+
+  std::vector<unsigned> symbol_used(ctx->classer->pixat->n);
+  for (int i = 0; i < ctx->classer->naclass->n; ++i) {
+    int n;
+    numaGetIValue(ctx->classer->naclass, i, &n);
+    symbol_used[n]++;
+  }
+
+  // the multiuse symbols are the ones which go into the global dictionary
+  std::vector<unsigned> multiuse_symbols;
+  for (int i = 0; i < ctx->classer->pixat->n; ++i) {
+    if (symbol_used[i] == 0) abort();
+    if (symbol_used[i] > 1) multiuse_symbols.push_back(i);
+  }
+  ctx->num_global_symbols = multiuse_symbols.size();
+
+  // build the pagecomps map: a map from page number to the list of connected
+  // components for that page. The classer gives us an array from connected
+  // component number to page number - we just have to reverse it
   for (int i = 0; i < ctx->classer->napage->n; ++i) {
     int page_num;
     numaGetIValue(ctx->classer->napage, i, &page_num);
     ctx->pagecomps[page_num].push_back(i);
+    int symbol;
+    numaGetIValue(ctx->classer->naclass, i, &symbol);
+    if (symbol_used[symbol] == 1) {
+      ctx->single_use_symbols[page_num].push_back(symbol);
+    }
   }
+
+#ifdef DUMP_SYMBOL_GRAPH
+  for (int p = 0; p < ctx->classer->npages; ++p) {
+    for (std::vector<int>::const_iterator i = ctx->pagecomps[p].begin();
+         i != ctx->pagecomps[p].end(); ++i) {
+      const int sym = (int) ctx->classer->naclass->array[*i];
+      fprintf(stderr, "S: %d %d\n", p, sym);
+    }
+  }
+#endif
 
 #ifdef SYMBOL_COMPRESSION_DEBUGGING
   std::map<int, int> usecount;
@@ -204,6 +254,17 @@ jbig2_pages_complete(struct jbig2ctx *ctx, int *const length) {
   }
 #endif
 
+#ifdef DUMP_ALL_SYMBOLS
+  char filenamebuf[128];
+  for (int i = 0; i < ctx->classer->pixat->n; ++i) {
+    sprintf(filenamebuf, "sym-%d.png", i);
+    pixWrite(filenamebuf, ctx->classer->pixat->pix[i], IFF_PNG);
+  }
+#endif
+  fprintf(stderr, "JBIG2 compression complete. pages:%d symbols:%d log2:%d\n",
+          ctx->classer->npages, ctx->classer->pixat->n,
+          log2up(ctx->classer->pixat->n));
+
   jbGetLLCorners(ctx->classer);
 
   struct jbig2enc_ctx ectx;
@@ -217,12 +278,12 @@ jbig2_pages_complete(struct jbig2ctx *ctx, int *const length) {
     memcpy(&header.id, JBIG2_FILE_MAGIC, 8);
   }
 
-  struct jbig2_segment seg;
-  memset(&seg, 0, sizeof(seg));
+  Segment seg;
   struct jbig2_symbol_dict symtab;
   memset(&symtab, 0, sizeof(symtab));
 
-  jbig2enc_symboltable(&ectx, ctx->classer->pixat, &ctx->symmap);
+  jbig2enc_symboltable(&ectx, ctx->classer->pixat,
+                       &multiuse_symbols, &ctx->symmap);
   const int symdatasize = jbig2enc_datasize(&ectx);
 
   symtab.a1x = 3;
@@ -233,23 +294,23 @@ jbig2_pages_complete(struct jbig2ctx *ctx, int *const length) {
   symtab.a3y = -2;
   symtab.a4x = -2;
   symtab.a4y = -2;
-  symtab.exsyms = symtab.newsyms = htonl(ctx->classer->pixat->n);
+  symtab.exsyms = symtab.newsyms = htonl(multiuse_symbols.size());
 
   ctx->symtab_segment = ctx->segnum;
-  seg.number = htonl(ctx->segnum);
+  seg.number = ctx->segnum;
   ctx->segnum++;
   seg.type = segment_symbol_table;
-  seg.len = htonl(sizeof(symtab) + symdatasize);
+  seg.len = sizeof(symtab) + symdatasize;
   seg.page = 0;
   seg.retain_bits = 1;
 
   u8 *const ret = (u8 *) malloc((ctx->full_headers ? sizeof(header) : 0) +
-                                sizeof(seg) + sizeof(symtab) + symdatasize);
+                                seg.size() + sizeof(symtab) + symdatasize);
   int offset = 0;
   if (ctx->full_headers) {
     F(header);
   }
-  F(seg);
+  SEGMENT(seg);
   F(symtab);
   jbig2enc_tobuffer(&ectx, ret + offset);
   jbig2enc_dealloc(&ectx);
@@ -270,10 +331,8 @@ jbig2_produce_page(struct jbig2ctx *ctx, int page_no,
   struct jbig2enc_ctx ectx;
   jbig2enc_init(&ectx);
 
-  struct jbig2_segment seg;
-  memset(&seg, 0, sizeof(seg));
-  struct jbig2_segment endseg;
-  memset(&endseg, 0, sizeof(endseg));
+  Segment seg, symseg;
+  Segment endseg, trailerseg;
   struct jbig2_page_info pageinfo;
   memset(&pageinfo, 0, sizeof(pageinfo));
   struct jbig2_text_region textreg;
@@ -282,26 +341,58 @@ jbig2_produce_page(struct jbig2ctx *ctx, int page_no,
   memset(&textreg_syminsts, 0, sizeof(textreg_syminsts));
   struct jbig2_text_region_atflags textreg_atflags;
   memset(&textreg_atflags, 0, sizeof(textreg_atflags));
-  struct jbig2_segment_referring segr;
-  memset(&segr, 0, sizeof(segr));
-  struct jbig2_segment_referring_trailer segrt;
-  memset(&segrt, 0, sizeof(segrt));
+  Segment segr;
 
-  seg.number = htonl(ctx->segnum);
+  // page information segment
+  seg.number = ctx->segnum;
   ctx->segnum++;
   seg.type = segment_page_information;
-  seg.page = ctx->pdf_page_numbering ? 1 : 1 + page_no;;
-  seg.len = htonl(sizeof(struct jbig2_page_info));
+  seg.page = ctx->pdf_page_numbering ? 1 : 1 + page_no;
+  seg.len = sizeof(struct jbig2_page_info);
   pageinfo.width = htonl(ctx->page_width[page_no]);
   pageinfo.height = htonl(ctx->page_height[page_no]);
-  pageinfo.xres = xres == -1 ? ctx->xres : xres;
-  pageinfo.yres = yres == -1 ? ctx->yres : yres;
+  pageinfo.xres = htonl(xres == -1 ? ctx->xres : xres);
+  pageinfo.yres = htonl(yres == -1 ? ctx->yres : yres);
   pageinfo.is_lossless = ctx->refinement;
 
-  const int numsyms = ctx->classer->pixat->n;
+  std::map<int, int> second_symbol_map;
+  // If we have single-use symbols on this page we make a new symbol table
+  // containing just them.
+  const bool extrasymtab = ctx->single_use_symbols[page_no].size() > 0;
+  struct jbig2enc_ctx extrasymtab_ctx;
+
+  struct jbig2_symbol_dict symtab;
+  memset(&symtab, 0, sizeof(symtab));
+
+  if (extrasymtab) {
+    jbig2enc_init(&extrasymtab_ctx);
+    symseg.number = ctx->segnum++;
+    symseg.type = segment_symbol_table;
+    symseg.page = ctx->pdf_page_numbering ? 1 : 1 + page_no;
+
+    jbig2enc_symboltable(&extrasymtab_ctx, ctx->classer->pixat,
+                         &ctx->single_use_symbols[page_no],
+                         &second_symbol_map);
+    symtab.a1x = 3;
+    symtab.a1y = -1;
+    symtab.a2x = -3;
+    symtab.a2y = -1;
+    symtab.a3x = 2;
+    symtab.a3y = -2;
+    symtab.a4x = -2;
+    symtab.a4y = -2;
+    symtab.exsyms = symtab.newsyms =
+      htonl(ctx->single_use_symbols[page_no].size());
+
+    symseg.len = jbig2enc_datasize(&extrasymtab_ctx) + sizeof(symtab);
+  }
+
+  const int numsyms = ctx->num_global_symbols +
+                      ctx->single_use_symbols[page_no].size();
   BOXA *const boxes = ctx->refinement ? ctx->boxes[page_no] : NULL;
   int baseindex = ctx->refinement ? ctx->baseindexes[page_no] : 0;
-  jbig2enc_textregion(&ectx, ctx->symmap, ctx->pagecomps[page_no],
+  jbig2enc_textregion(&ectx, ctx->symmap, second_symbol_map,
+                      ctx->pagecomps[page_no],
                       ctx->classer->ptall, ctx->classer->pixat,
                       ctx->classer->naclass, 1,
                       log2up(numsyms),
@@ -320,53 +411,59 @@ jbig2_produce_page(struct jbig2ctx *ctx, int page_no,
   textreg_atflags.a2x = -1;
   textreg_atflags.a2y = -1;
 
-  const u32 this_segment_number = ctx->segnum;
-  segr.number = htonl(ctx->segnum);
+  segr.number = ctx->segnum;
   ctx->segnum++;
   segr.type = segment_imm_text_region;
+  segr.referred_to.push_back(ctx->symtab_segment);
+  if (extrasymtab) segr.referred_to.push_back(symseg.number);
   if (ctx->refinement) {
-        segrt.len = htonl(sizeof(textreg) + sizeof(textreg_syminsts) +
-                     sizeof(textreg_atflags) + textdatasize);
+    segr.len = sizeof(textreg) + sizeof(textreg_syminsts) +
+               sizeof(textreg_atflags) + textdatasize;
   } else {
-    segrt.len = htonl(sizeof(textreg) + sizeof(textreg_syminsts) + textdatasize);
+    segr.len = sizeof(textreg) + sizeof(textreg_syminsts) + textdatasize;
   }
 
-  // Segments can only refer to previous segments. So the size of the referred
-  // to segments depends on the number of *this* segments. see 7.2.5 pp 76)
-  int referring_data_len;
-  u8 referring_data[4];
-  if (this_segment_number <= 256) {
-    referring_data_len = 1;
-    referring_data[0] = ctx->symtab_segment;
-  } else if (this_segment_number <= 65536) {
-    referring_data_len = 2;
-    u16 r = htons(ctx->symtab_segment);
-    memcpy(referring_data, &r, 2);
-  } else {
-    referring_data_len = 4;
-    u32 r = htonl(ctx->symtab_segment);
-    memcpy(referring_data, &r, 4);
-  }
-
-  segr.segment_count = 1;
   segr.retain_bits = 2;
-  segrt.page = ctx->pdf_page_numbering ? 1 : 1 + page_no;;
+  segr.page = ctx->pdf_page_numbering ? 1 : 1 + page_no;
 
-  const int totalsize = sizeof(seg) + sizeof(pageinfo) + sizeof(segr) +
-                        referring_data_len + sizeof(segrt) +
+  const int extrasymtab_size = extrasymtab ?
+    jbig2enc_datasize(&extrasymtab_ctx) : 0;
+
+  if (ctx->full_headers) {
+    endseg.number = ctx->segnum;
+    ctx->segnum++;
+    endseg.type = segment_end_of_page;
+    endseg.page = ctx->pdf_page_numbering ? 1 : 1 + page_no;
+  }
+
+  if (include_trailer) {
+    trailerseg.number = ctx->segnum;
+    ctx->segnum++;
+    trailerseg.type = segment_end_of_file;
+    trailerseg.page = 0;
+  }
+
+  const int totalsize = seg.size() + sizeof(pageinfo) +
+                        (extrasymtab ? (extrasymtab_size + symseg.size() +
+                                        sizeof(symtab)) : 0) +
+                        segr.size() +
                         sizeof(textreg) + sizeof(textreg_syminsts) +
                         (ctx->refinement ? sizeof(textreg_atflags) : 0) +
                         textdatasize +
-                        (ctx->full_headers ? sizeof(endseg) : 0) +
-                        (include_trailer ? sizeof(seg) : 0);
+                        (ctx->full_headers ? endseg.size() : 0) +
+                        (include_trailer ? trailerseg.size() : 0);
   u8 *ret = (u8 *) malloc(totalsize);
   int offset = 0;
 
-  F(seg);
+  SEGMENT(seg);
   F(pageinfo);
-  F(segr);
-  G(referring_data, referring_data_len);
-  F(segrt);
+  if (extrasymtab) {
+    SEGMENT(symseg);
+    F(symtab);
+    jbig2enc_tobuffer(&extrasymtab_ctx, ret + offset);
+    offset += extrasymtab_size;
+  }
+  SEGMENT(segr);
   F(textreg);
   if (ctx->refinement) {
     F(textreg_atflags);
@@ -374,23 +471,16 @@ jbig2_produce_page(struct jbig2ctx *ctx, int page_no,
   F(textreg_syminsts);
   jbig2enc_tobuffer(&ectx, ret + offset); offset += textdatasize;
   if (ctx->full_headers) {
-    endseg.number = htonl(ctx->segnum);
-    ctx->segnum++;
-    endseg.type = segment_end_of_page;
-    endseg.page = ctx->pdf_page_numbering ? 1 : 1 + page_no;
-    F(endseg);
+    SEGMENT(endseg);
   }
   if (include_trailer) {
-    endseg.number = htonl(ctx->segnum);
-    ctx->segnum++;
-    endseg.type = segment_end_of_file;
-    endseg.page = 0;
-    F(endseg);
+    SEGMENT(trailerseg);
   }
 
   if (totalsize != offset) abort();
 
   jbig2enc_dealloc(&ectx);
+  if (extrasymtab) jbig2enc_dealloc(&extrasymtab_ctx);
 
   *length = offset;
   return ret;
@@ -421,20 +511,17 @@ jbig2_encode_generic(struct Pix *const bw, const bool full_headers, const int xr
   struct jbig2enc_ctx ctx;
   jbig2enc_init(&ctx);
 
-  jbig2_segment seg;
-  memset(&seg, 0, sizeof(seg));
-  jbig2_segment seg2;
-  memset(&seg2, 0, sizeof(seg2));
+  Segment seg, seg2, endseg;
   jbig2_page_info pageinfo;
   memset(&pageinfo, 0, sizeof(pageinfo));
   jbig2_generic_region genreg;
   memset(&genreg, 0, sizeof(genreg));
 
-  seg.number = htonl(segnum);
+  seg.number = segnum;
   segnum++;
   seg.type = segment_page_information;
   seg.page = 1;
-  seg.len = htonl(sizeof(struct jbig2_page_info));
+  seg.len = sizeof(struct jbig2_page_info);
   pageinfo.width = htonl(bw->w);
   pageinfo.height = htonl(bw->h);
   pageinfo.xres = htonl(xres ? xres : bw->xres);
@@ -445,11 +532,11 @@ jbig2_encode_generic(struct Pix *const bw, const bool full_headers, const int xr
   jbig2enc_final(&ctx);
   const int datasize = jbig2enc_datasize(&ctx);
 
-  seg2.number = htonl(segnum);
+  seg2.number = segnum;
   segnum++;
   seg2.type = segment_imm_generic_region;
   seg2.page = 1;
-  seg2.len = htonl(sizeof(genreg) + datasize);
+  seg2.len = sizeof(genreg) + datasize;
 
   genreg.width = htonl(bw->w);
   genreg.height = htonl(bw->h);
@@ -465,9 +552,9 @@ jbig2_encode_generic(struct Pix *const bw, const bool full_headers, const int xr
   genreg.a4x = -2;
   genreg.a4y = -2;
 
-  const int totalsize = sizeof(seg) + sizeof(pageinfo) + sizeof(seg2) +
+  const int totalsize = seg.size() + sizeof(pageinfo) + seg2.size() +
                         sizeof(genreg) + datasize +
-                        (full_headers ? (sizeof(header) + 2*sizeof(seg)) : 0);
+                        (full_headers ? (sizeof(header) + 2*endseg.size()) : 0);
   u8 *const ret = (u8 *) malloc(totalsize);
   int offset = 0;
 
@@ -475,19 +562,18 @@ jbig2_encode_generic(struct Pix *const bw, const bool full_headers, const int xr
   if (full_headers) {
     F(header);
   }
-  F(seg);
+  SEGMENT(seg);
   F(pageinfo);
-  F(seg2);
+  SEGMENT(seg2);
   F(genreg);
   jbig2enc_tobuffer(&ctx, ret + offset);
   offset += datasize;
 
   if (full_headers) {
-    seg.type = segment_end_of_page;
-    seg.len = 0;
-    F(seg);
-    seg.type = segment_end_of_file;
-    F(seg);
+    endseg.type = segment_end_of_page;
+    SEGMENT(endseg);
+    endseg.type = segment_end_of_file;
+    SEGMENT(endseg);
   }
 
   if (totalsize != offset) abort();

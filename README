@@ -36,3 +36,13 @@ USAGE:
 See the jbig2enc.h header for the high level API, or the jbig2 program for an
 example of usage. It's very short and most of it is taken up with argument
 parsing.
+
+CHANGES:
+
+0.21:
+   * Patch from Alberto Accomazzi to fix the pdf.py script and to output more
+     sensible filenames in pdf mode
+   * Symbols which are only used once are now included in a per-page dictionary
+     (great for scans of old books)
+   * Fixed several scale bugs (one at 65K symbols and one at 100K symbols)
+   * Page numbers > 256 went wrong
