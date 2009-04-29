@@ -41,45 +41,125 @@ usage(const char *argv0) {
   fprintf(stderr, "  -O <outfile>: dump thresholded image as PNG\n");
   fprintf(stderr, "  -2: upsample 2x before thresholding\n");
   fprintf(stderr, "  -4: upsample 4x before thresholding\n");
-  fprintf(stderr, "  -S: remove images from a mixed input\n");
-  fprintf(stderr, "  --image-output: write image part of mixed input to this file (PNG)\n\n");
+  fprintf(stderr, "  -S: remove images from mixed input and save separately\n");
+  fprintf(stderr, "  -j --jpeg-output: write images from mixed input as JPEG\n");
+  fprintf(stderr, "  -v: be verbose\n");
+}
+
+static bool verbose = false;
+
+
+static void
+pixInfo(PIX *pix, const char *msg) {
+  if (msg != NULL) fprintf(stderr, "%s ", msg);
+  if (pix == NULL) {
+    fprintf(stderr, "NULL pointer!\n");
+    return;
+  }
+  fprintf(stderr, "%u x %u (%d bits) %udpi x %udpi, refcount = %u\n",
+          pix->w, pix->h, pix->d, pix->xres, pix->yres, pix->refcount);
 }
 
 // -----------------------------------------------------------------------------
 // Morphological operations for segmenting an image into text regions
 // -----------------------------------------------------------------------------
 static const char *segment_mask_sequence = "r11";
-static const char *segment_seed_sequence = "r1143 + o4.4 + x4";  /* maybe o6.6 */
+static const char *segment_seed_sequence = "r1143 + o4.4 + x4"; /* maybe o6.6 */
 static const char *segment_dilation_sequence = "d3.3";
 
 // -----------------------------------------------------------------------------
-// Removes images from a source image and returns the result. Optionally can
-// dump the image part of the image to a file. Mutates the input.
+// Takes two pix as input, generated from the same original image:
+//   1. pixb   - a binary thresholded image
+//   2. piximg - a full color or grayscale image
+// and segments them by finding the areas that contain color or grayscale
+// graphics, removing those areas from the binary image, and doing the
+// opposite for the full color/grayscale image.  The upshot is that after
+// this routine has been run, the binary image contains only text and the
+// full color image contains only the graphics.
 //
-//   pixb: binary input image
-//   output_output: NULL or filename to write the image-parts to
+// Both input images are modified by this procedure.  If no text is found,
+// pixb is set to NULL.  If no graphics is found, piximg is set to NULL.
 //
 // Thanks to Dan Bloomberg for this
 // -----------------------------------------------------------------------------
 
-static void
-segment_image(PIX *pixb, const char *other_output) {
+static PIX*
+segment_image(PIX *pixb, PIX *piximg) {
   // Make seed and mask, and fill seed into mask
   PIX *pixmask4 = pixMorphSequence(pixb, (char *) segment_mask_sequence, 0);
   PIX *pixseed4 = pixMorphSequence(pixb, (char *) segment_seed_sequence, 0);
   PIX *pixsf4 = pixSeedfillBinary(NULL, pixseed4, pixmask4, 8);
   PIX *pixd4 = pixMorphSequence(pixsf4, (char *) segment_dilation_sequence, 0);
-  PIX *pixd = pixExpandBinary(pixd4, 4);
 
-  pixSubtract(pixb, pixb, pixd);
+  // we want to force the binary mask to be the same size as the
+  // input color image, so we have to do it this way...
+  // is there a better way?
+  // PIX *pixd = pixExpandBinary(pixd4, 4);
+  PIX *pixd = pixCreate(piximg->w, piximg->h, 1);
+  pixCopyResolution(pixd, piximg);
+  if (verbose) pixInfo(pixd, "mask image: ");
+  expandBinaryLow(pixd->data, pixd->w, pixd->h, pixd->wpl,
+                  pixd4->data, pixd4->w, pixd4->h, pixd4->wpl, 4);
 
-  if (other_output) pixWrite(other_output, pixd, IFF_PNG);
-
-  pixDestroy(&pixd);
   pixDestroy(&pixd4);
   pixDestroy(&pixsf4);
   pixDestroy(&pixseed4);
   pixDestroy(&pixmask4);
+
+  pixSubtract(pixb, pixb, pixd);
+
+  // now see what we got from the segmentation
+  static l_int32 *tab = NULL;
+  if (tab == NULL) tab = makePixelSumTab8();
+
+  // if no image portion was found, set the image pointer to NULL and return
+  l_int32  pcount;
+  pixCountPixels(pixd, &pcount, tab);
+  if (verbose) fprintf(stderr, "pixel count of graphics image: %u\n", pcount);
+  if (pcount < 100) {
+    pixDestroy(&pixd);
+    return NULL;
+  }
+
+  // if no text portion found, set the binary pointer to NULL
+  pixCountPixels(pixb, &pcount, tab);
+  if (verbose) fprintf(stderr, "pixel count of binary image: %u\n", pcount);
+  if (pcount < 100) {
+    pixDestroy(&pixb);
+  }
+
+  PIX *piximg1;
+  if (piximg->d == 1 || piximg->d == 8 || piximg->d == 32) {
+    piximg1 = pixClone(piximg);
+  } else if (piximg->d > 8) {
+    piximg1 = pixConvertTo32(piximg);
+  } else {
+    piximg1 = pixConvertTo8(piximg);
+  }
+
+  PIX *pixd1;
+  if (piximg1->d == 32) {
+    pixd1 = pixConvertTo32(pixd);
+  } else if (piximg1->d == 8) {
+    pixd1 = pixConvertTo8(pixd);
+  } else {
+    pixd1 = pixClone(pixd);
+  }
+  pixDestroy(&pixd);
+
+  if (verbose) {
+    pixInfo(pixd1, "binary mask image:");
+    pixInfo(piximg1, "graphics image:");
+  }
+  pixRasteropFullImage(pixd1, piximg1, PIX_SRC | PIX_DST);
+
+  pixDestroy(&piximg1);
+  if (verbose) {
+    pixInfo(pixb, "segmented binary text image:");
+    pixInfo(pixd1, "segmented graphics image:");
+  }
+
+  return pixd1;
 }
 
 int
@@ -93,7 +173,8 @@ main(int argc, char **argv) {
   bool up2 = false, up4 = false;
   const char *output_threshold = NULL;
   const char *basename = "output";
-  const char *image_output = NULL;
+  l_int32 img_fmt = IFF_PNG;
+  const char *img_ext = "png";
   bool segment = false;
   int i;
 
@@ -149,9 +230,10 @@ main(int argc, char **argv) {
       continue;
     }
 
-    if (strcmp(argv[i], "--image-output") == 0) {
-      image_output = argv[i+1];
-      i++;
+    if (strcmp(argv[i], "-j") == 0 ||
+        strcmp(argv[i], "--jpeg-output") == 0) {
+      img_ext = "jpg";
+      img_fmt = IFF_JFIF_JPEG;
       continue;
     }
 
@@ -189,6 +271,11 @@ main(int argc, char **argv) {
       continue;
     }
 
+    if (strcmp(argv[i], "-v") == 0) {
+      verbose = true;
+      continue;
+    }
+
     break;
   }
 
@@ -211,17 +298,21 @@ main(int argc, char **argv) {
 
   struct jbig2ctx *ctx = jbig2_init(threshold, 0.5, 0, 0, !pdfmode, refine ? 10 : -1);
   const int num_pages = argc - i;
+  int pageno = -1;
 
   while (i < argc) {
-    PIX *source = pixReadWithHint(argv[i], L_HINT_GRAY);
+    PIX *source = pixRead(argv[i]);
     if (!source) return 3;
+    if (verbose)
+      pixInfo(source, "source image:");
 
     PIX *pixl, *gray, *pixt;
-    if ((pixl = pixRemoveColormap(source, REMOVE_CMAP_TO_GRAYSCALE)) == NULL) {
+    if ((pixl = pixRemoveColormap(source, REMOVE_CMAP_BASED_ON_SRC)) == NULL) {
       fprintf(stderr, "Failed to remove colormap from %s\n", argv[i]);
       return 1;
     }
     pixDestroy(&source);
+    pageno++;
 
     if (pixl->d > 1) {
       if (pixl->d > 8) {
@@ -241,15 +332,32 @@ main(int argc, char **argv) {
     } else {
       pixt = pixClone(pixl);
     }
-    pixDestroy(&pixl);
+    if (verbose)
+      pixInfo(pixt, "thresholded image:");
 
     if (output_threshold) {
       pixWrite(output_threshold, pixt, IFF_PNG);
     }
 
-    if (segment) {
-      segment_image(pixt, image_output);
+    if (segment && pixl->d > 1) {
+      PIX *graphics = segment_image(pixt, pixl);
+      if (graphics) {
+        if (verbose)
+          pixInfo(graphics, "graphics image:");
+        char *filename;
+        asprintf(&filename, "%s.%04d.%s", basename, pageno, img_ext);
+        pixWrite(filename, graphics, img_fmt);
+      } else if (verbose) {
+        fprintf(stderr, "%s: no graphics found in input image\n", argv[i]);
+      }
+      if (! pixt) {
+        fprintf(stderr, "%s: no text portion found in input image\n", argv[i]);
+        i++;
+        continue;
+      }
     }
+
+    pixDestroy(&pixl);
 
     if (!symbol_mode) {
       int length;
@@ -298,3 +406,4 @@ main(int argc, char **argv) {
 
   jbig2_destroy(ctx);
 }
+
