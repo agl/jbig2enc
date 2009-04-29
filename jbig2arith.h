@@ -18,11 +18,20 @@
 #ifndef JBIG2ENC_JBIG2ENC_H__
 #define JBIG2ENC_JBIG2ENC_H__
 
+#if defined(sun)
+#include <sys/types.h>
+#else
 #include <stdint.h>
+#endif
+
 #include <vector>
 
 #define JBIG2_MAX_CTX 65536
 #define JBIG2_OUTPUTBUFFER_SIZE 20 * 1024
+
+#ifdef _MSC_VER
+#define __restrict__ __restrict
+#endif
 
 //#define JBIG2_DEBUGGING
 //#define CODER_DEBUGGING

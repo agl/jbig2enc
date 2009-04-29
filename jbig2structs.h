@@ -34,6 +34,13 @@ enum {
 
 #define JBIG2_FILE_MAGIC "\x97\x4a\x42\x32\x0d\x0a\x1a\x0a"
 
+#if defined(WIN32)
+#pragma pack(1)
+#define PACKED
+#else
+#define PACKED __attribute__((packed))
+#endif
+
 struct jbig2_file_header {
   u8 id[8];
 #ifndef _BIG_ENDIAN
@@ -46,7 +53,7 @@ struct jbig2_file_header {
   u8 organisation_type : 1;
 #endif
   u32 n_pages;
-} __attribute__((packed));
+} PACKED;
 
 struct jbig2_page_info {
   u32 width;
@@ -71,7 +78,7 @@ struct jbig2_page_info {
   u8 is_lossless : 1;
 #endif
   u16 segment_flags;
-} __attribute__((packed));
+} PACKED;
 
 struct jbig2_generic_region {
   u32 width;
@@ -95,7 +102,7 @@ struct jbig2_generic_region {
   // generic region segment here. You may not need to write all 8 bytes here.
   // If the template is 1..3 only the first two are needed.
   signed char a1x, a1y, a2x, a2y, a3x, a3y, a4x, a4y;
-} __attribute__ ((packed));
+} PACKED ;
 
 struct jbig2_symbol_dict {
 #ifndef _BIG_ENDIAN

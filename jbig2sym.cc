@@ -17,15 +17,14 @@
 
 #include <map>
 #include <algorithm>
-#ifdef USE_EXT
-#include <ext/numeric>  // for iota
-#else
-#include <numeric>  // for iota
-#endif
 
 #include "jbig2arith.h"
 
+#ifdef _MSC_VER
+#define restrict __restrict
+#else
 #define restrict __restrict__
+#endif
 
 #include <allheaders.h>
 #include <pix.h>
@@ -33,6 +32,17 @@
 #include <math.h>
 
 #define S(i) symbols->pix[i]
+
+
+// -----------------------------------------------------------------------------
+// iota isn't part of the STL standard, and it can be a pain to include even on
+// gcc based systems. Thus we define it here and save the issues
+// -----------------------------------------------------------------------------
+template <class _ForwardIterator, class _Tp>
+void
+myiota(_ForwardIterator __first, _ForwardIterator __last, _Tp __val) {
+  while (__first != __last) *__first++ = __val++;
+}
 
 // -----------------------------------------------------------------------------
 // Sorts a vector of indexes into the symbols PIXA by height. This is needed
@@ -192,7 +202,7 @@ class XSorter {  // concept: stl/StrictWeakOrdering
   const PTA *const ll;
 };
 
-#if __GNUC__ <= 2
+#if (__GNUC__ <= 2) || defined(sun)
 #define lrint(x) static_cast<int>(x)
 #endif
 
@@ -208,7 +218,7 @@ jbig2enc_textregion(struct jbig2enc_ctx *restrict ctx,
                     PIXA *const symbols,
                     NUMA *assignments, int stripwidth, int symbits,
                     PIXA *const source, BOXA *boxes, int baseindex,
-                    int refine_level) {
+                    int refine_level, bool unborder_symbols) {
   // these are the only valid values for stripwidth
   if (stripwidth != 1 && stripwidth != 2 && stripwidth != 4 &&
       stripwidth != 8) {
@@ -220,7 +230,7 @@ jbig2enc_textregion(struct jbig2enc_ctx *restrict ctx,
   // In the case of refinement, we have to put the symbols where the original
   // boxes were. So we make up an array of lower-left (ll) points from the
   // boxes. Otherwise we take the points from the in_ll array we were given.
-  // However, the in_ll array is absolutely index and the boxes array is
+  // However, the in_ll array is absolutely indexed and the boxes array is
   // relative to this page so watch out below.
   if (source) {
     ll = ptaCreate(0);
@@ -229,7 +239,7 @@ jbig2enc_textregion(struct jbig2enc_ctx *restrict ctx,
                boxes->box[i]->y + boxes->box[i]->h - 1);
     }
   } else {
-    // in we aren't doing refinement - we just put the symbols where they
+    // if we aren't doing refinement - we just put the symbols where they
     // matched best
     ll = in_ll;
   }
@@ -244,7 +254,7 @@ jbig2enc_textregion(struct jbig2enc_ctx *restrict ctx,
   if (source) {
     // refining: fill syms with the numbers 0..n because ll is relative to this
     // page in this case
-    iota(syms.begin(), syms.end(), 0);
+    myiota(syms.begin(), syms.end(), 0);
   } else {
     // fill syms with the component numbers from the comps array because ll is
     // absolutly indexed in this case (absolute: over the whole multi-page
@@ -362,8 +372,13 @@ jbig2enc_textregion(struct jbig2enc_ctx *restrict ctx,
         // number.
         const int abssym = baseindex + sym;
 
-        // the symbol has a 6 px border around it, which we need to remove
-        PIX *symbol = pixRemoveBorder(S(assigned), kBorderSize);
+        PIX *symbol;
+        if (unborder_symbols) {
+          // the symbol has a 6 px border around it, which we need to remove
+          symbol = pixRemoveBorder(S(assigned), kBorderSize);
+        } else {
+          symbol = pixClone(S(assigned));
+        }
         pixSetPadBits(symbol, 0);
 
         const int targetw = boxes->box[sym]->w;
@@ -408,7 +423,7 @@ jbig2enc_textregion(struct jbig2enc_ctx *restrict ctx,
           // refinement disabled.
           jbig2enc_int(ctx, JBIG2_IARI, 0);
           // update curs given the width of the bitmap
-          curs += (S(assigned)->w - 2*kBorderSize) - 1;
+          curs += (S(assigned)->w - (unborder_symbols ? 2*kBorderSize : 0)) - 1;
         } else {
           wibble++;
           jbig2enc_int(ctx, JBIG2_IARI, 1);
@@ -428,7 +443,7 @@ jbig2enc_textregion(struct jbig2enc_ctx *restrict ctx,
         }
       } else {
         // update curs given the width of the bitmap
-        curs += (S(assigned)->w - 2*kBorderSize) - 1;
+        curs += (S(assigned)->w - (unborder_symbols ? 2*kBorderSize : 0)) - 1;
       }
     }
     // terminate the strip

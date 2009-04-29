@@ -34,7 +34,11 @@
 //   http://www.leptonica.com/
 // -----------------------------------------------------------------------------
 
+#if defined(sun)
+#include <sys/types.h>
+#else
 #include <stdint.h>
+#endif
 
 struct Pix;
 // This is the (opaque) structure which handles multi-page compression.
@@ -44,7 +48,7 @@ struct jbig2ctx;
 // Multipage compression.
 //
 // First call jbig2_init to setup the structure. This structure must be free'ed
-// by calling jbig2_destory when you are finished.
+// by calling jbig2_destroy when you are finished.
 //
 // First, add all the pages with jbig2_add_page. This will collect all the
 // information required. If refinement is on, it will also save all the
@@ -63,11 +67,11 @@ struct jbig2ctx;
 // thresh: The threshold for the classifier. The larger the number the larger
 //         the number of different symbols, the more bits used and the closer
 //         the resulting image is to the original. (0.85 is a good value)
-// weight: FIXME
+// weight: Use 0.5
 // xres: the ppi in the X direction. If 0, the ppi is taken from bw
 // yres: see xres
 // full_headers: if true a full JBIG2 file is produced, otherwise the data is
-//               only good for enbedding
+//               only good for embedding in PDFs
 // refine: If < 0, disable refinement. Otherwise, the number of incorrect
 //         pixels which will be accepted per symbol. Enabling refinement
 //         increases memory use.
@@ -90,7 +94,7 @@ void jbig2_add_page(struct jbig2ctx *ctx, struct Pix *bw);
 //
 // WARNING: returns a malloced buffer which the caller must free
 // -----------------------------------------------------------------------------
-uint8_t *jbig2_pages_complete(struct jbig2ctx *ctx, int *length);
+uint8_t *jbig2_pages_complete(struct jbig2ctx *ctx, int *const length);
 // -----------------------------------------------------------------------------
 // Encode a page.
 //
@@ -102,7 +106,7 @@ uint8_t *jbig2_pages_complete(struct jbig2ctx *ctx, int *length);
 // WARNING: returns a malloced buffer which the caller must free
 // -----------------------------------------------------------------------------
 uint8_t *jbig2_produce_page(struct jbig2ctx *ctx, int page_no, int xres,
-                            int yres, int *length);
+                            int yres, int *const length);
 
 // WARNING: returns a malloced buffer which the caller must free
 // -----------------------------------------------------------------------------
@@ -116,7 +120,7 @@ uint8_t *jbig2_produce_page(struct jbig2ctx *ctx, int page_no, int xres,
 // Encode an image as a single generic region. This is lossless. It should not
 // be used for images as half-tone coding is not implemented.
 //
-// see argument comments for jbig2_encode_symbols
+// see argument comments for jbig2_init
 // duplicate_line_removal: turning this on
 //    * Breaks ghostscript
 //    * Takes ever so slightly more bytes to encode

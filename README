@@ -14,7 +14,7 @@ better compression than G4. This encoder can:
 It uses the (Apache-ish licensed) Leptonica library:
   http://www.leptonica.com/
 
-You'll need version 1.35.
+You'll need version 1.53 - which is included with the distribution tarball.
 
 KNOWN BUGS:
 
@@ -28,7 +28,7 @@ First, read the file PATENTS in the same directory as this file.
 Fetch leptonica from its website and build it. For this you will also
 need the standard libtiff, libpng and libjpeg.
 
-If leptonica was unpacked in ../leptonlib-1.35/ you should just be able to type
+If leptonica was unpacked in ../leptonlib-1.53/ you should just be able to type
 make. Otherwise, fix up the path at the beginning of the Makefile first.
 
 USAGE:
@@ -38,6 +38,22 @@ example of usage. It's very short and most of it is taken up with argument
 parsing.
 
 CHANGES:
+
+0.26:
+  * Update to the latest Leptonica (1.53)
+
+0.25:
+   * Should build on Windows if you get a leptonica which does so (thanks to
+     Dwight Kelly and a man known only as Dennis)
+
+0.24:
+   * Update to leptonica 1.38
+   * Add ability to gray symbols but it's commented out because it does little
+     good
+   * Refinement support broke because of memory savings in leptonica
+
+0.23:
+   * Quick release to support leptonica 1.37 (now bundled)
 
 0.22:
    * Added segmentation support to extract text from mixed images

@@ -27,6 +27,12 @@
 
 #include "jbig2enc.h"
 
+#if defined(WIN32)
+#define WINBINARY O_BINARY
+#else
+#define WINBINARY 0
+#endif
+
 static void
 usage(const char *argv0) {
   fprintf(stderr, "Usage: %s [options] <input filenames...>\n", argv0);
@@ -59,6 +65,27 @@ pixInfo(PIX *pix, const char *msg) {
   fprintf(stderr, "%u x %u (%d bits) %udpi x %udpi, refcount = %u\n",
           pix->w, pix->h, pix->d, pix->xres, pix->yres, pix->refcount);
 }
+
+#ifdef _MSC_VER
+// -----------------------------------------------------------------------------
+// Windows, sadly, lacks asprintf
+// -----------------------------------------------------------------------------
+#include <stdarg.h>
+int
+asprintf(char **strp, const char *fmt, ...) {
+    va_list va;
+    va_start(va, fmt);
+
+    const int required = vsnprintf(NULL, 0, fmt, va);
+    char *const buffer = (char *) malloc(required + 1);
+    const int ret = vsnprintf(buffer, required + 1, fmt, va);
+    *strp = buffer;
+
+    va_end(va);
+
+    return ret;
+}
+#endif
 
 // -----------------------------------------------------------------------------
 // Morphological operations for segmenting an image into text regions
@@ -98,8 +125,8 @@ segment_image(PIX *pixb, PIX *piximg) {
   PIX *pixd = pixCreate(piximg->w, piximg->h, 1);
   pixCopyResolution(pixd, piximg);
   if (verbose) pixInfo(pixd, "mask image: ");
-  expandBinaryLow(pixd->data, pixd->w, pixd->h, pixd->wpl,
-                  pixd4->data, pixd4->w, pixd4->h, pixd4->wpl, 4);
+  expandBinaryPower2Low(pixd->data, pixd->w, pixd->h, pixd->wpl,
+                        pixd4->data, pixd4->w, pixd4->h, pixd4->wpl, 4);
 
   pixDestroy(&pixd4);
   pixDestroy(&pixsf4);
@@ -134,14 +161,14 @@ segment_image(PIX *pixb, PIX *piximg) {
   } else if (piximg->d > 8) {
     piximg1 = pixConvertTo32(piximg);
   } else {
-    piximg1 = pixConvertTo8(piximg);
+    piximg1 = pixConvertTo8(piximg, FALSE);
   }
 
   PIX *pixd1;
   if (piximg1->d == 32) {
     pixd1 = pixConvertTo32(pixd);
   } else if (piximg1->d == 8) {
-    pixd1 = pixConvertTo8(pixd);
+    pixd1 = pixConvertTo8(pixd, FALSE);
   } else {
     pixd1 = pixClone(pixd);
   }
@@ -179,6 +206,13 @@ main(int argc, char **argv) {
   int i;
 
   for (i = 1; i < argc; ++i) {
+    if (strcmp(argv[i], "-h") == 0 ||
+        strcmp(argv[i], "--help") == 0) {
+      usage(argv[0]);
+      return 0;
+      continue;
+    }
+
     if (strcmp(argv[i], "-b") == 0 ||
         strcmp(argv[i], "--basename") == 0) {
       basename = argv[i+1];
@@ -206,6 +240,10 @@ main(int argc, char **argv) {
 
     if (strcmp(argv[i], "-r") == 0 ||
         strcmp(argv[i], "--refine") == 0) {
+      fprintf(stderr, "Refinement broke in recent releases since it's "
+                      "rarely used. If you need it you should bug "
+                      "agl@imperialviolet.org to fix it\n");
+      return 1;
       refine = true;
       continue;
     }
@@ -297,11 +335,31 @@ main(int argc, char **argv) {
   }
 
   struct jbig2ctx *ctx = jbig2_init(threshold, 0.5, 0, 0, !pdfmode, refine ? 10 : -1);
-  const int num_pages = argc - i;
   int pageno = -1;
 
+  int numsubimages=0, subimage=0, num_pages = 0;
   while (i < argc) {
-    PIX *source = pixRead(argv[i]);
+    if (subimage==numsubimages) {
+      subimage = numsubimages = 0;
+      FILE *fp;
+      if ((fp=fopen(argv[i], "r"))==NULL) {
+        fprintf(stderr, "Unable to open \"%s\"", argv[i]);
+        return 1;
+      }
+      int filetype = findFileFormat(fp);
+      if (filetype==IFF_TIFF && tiffGetCount(fp, &numsubimages)) {
+        return 1;
+      }
+      fclose(fp);
+    }
+
+    PIX *source;
+    if (numsubimages<=1) {
+      source = pixRead(argv[i]);
+    } else {
+      source = pixReadTiff(argv[i], subimage++);
+    }
+
     if (!source) return 3;
     if (verbose)
       pixInfo(source, "source image:");
@@ -347,6 +405,7 @@ main(int argc, char **argv) {
         char *filename;
         asprintf(&filename, "%s.%04d.%s", basename, pageno, img_ext);
         pixWrite(filename, graphics, img_fmt);
+        free(filename);
       } else if (verbose) {
         fprintf(stderr, "%s: no graphics found in input image\n", argv[i]);
       }
@@ -369,8 +428,11 @@ main(int argc, char **argv) {
     }
 
     jbig2_add_page(ctx, pixt);
-    i++;
     pixDestroy(&pixt);
+    num_pages++;
+    if (subimage==numsubimages) {
+      i++;
+    }
   }
 
   uint8_t *ret;
@@ -379,7 +441,8 @@ main(int argc, char **argv) {
   if (pdfmode) {
     char *filename;
     asprintf(&filename, "%s.sym", basename);
-    const int fd = open(filename, O_WRONLY | O_TRUNC | O_CREAT, 0600);
+    const int fd = open(filename, O_WRONLY | O_TRUNC | O_CREAT | WINBINARY, 0600);
+    free(filename);
     if (fd < 0) abort();
     write(fd, ret, length);
     close(fd);
@@ -393,11 +456,11 @@ main(int argc, char **argv) {
     if (pdfmode) {
       char *filename;
       asprintf(&filename, "%s.%04d", basename, i);
-      const int fd = open(filename, O_WRONLY | O_CREAT | O_TRUNC, 0600);
+      const int fd = open(filename, O_WRONLY | O_CREAT | O_TRUNC | WINBINARY, 0600);
+      free(filename);
       if (fd < 0) abort();
       write(fd, ret, length);
       close(fd);
-      free(filename);
     } else {
       write(1, ret, length);
     }

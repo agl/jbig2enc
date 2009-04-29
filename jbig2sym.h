@@ -61,6 +61,7 @@ void jbig2enc_symboltable(struct jbig2enc_ctx *__restrict__ ctx,
 // baseindex: if source is non-NULL, this is the component number of the first
 //            component on this page
 // refine_level: the number of incorrect pixels allowed before refining.
+// unborder_symbols: if true, symbols have a 6px border around them
 // -----------------------------------------------------------------------------
 void jbig2enc_textregion(struct jbig2enc_ctx *__restrict__ ctx,
                          /*const*/ std::map<int, int> &symmap,
@@ -69,7 +70,7 @@ void jbig2enc_textregion(struct jbig2enc_ctx *__restrict__ ctx,
                          PTA *const ll, PIXA *const symbols,
                          NUMA *assignments,
                          int stripwidth, int symbits,
-                         PIXA *source, BOXA *boxes, int baseindex,
-                         int refine_level);
+                         PIXA *const source, BOXA *boxes, int baseindex,
+                         int refine_level, bool unborder_symbols);
 
 #endif  // JBIG2ENC_JBIG2SYM_H__

@@ -23,7 +23,11 @@
 #include <pix.h>
 
 #include <math.h>
+#if defined(sun)
+#include <sys/types.h>
+#else
 #include <stdint.h>
+#endif
 
 #define u64 uint64_t
 #define u32 uint32_t
@@ -34,9 +38,6 @@
 #include "jbig2sym.h"
 #include "jbig2structs.h"
 #include "jbig2segments.h"
-#include <netinet/in.h>
-
-#include <sys/time.h>
 
 // -----------------------------------------------------------------------------
 // Removes spots which are less than size x size pixels
@@ -100,11 +101,8 @@ struct jbig2ctx {
   PIXA *avg_templates;  // grayed templates
   int refine_level;
   // only used when using refinement
-    // the bounding boxes of the symbols of each page.
-    std::vector<BOXA *> boxes;
     // the number of the first symbol of each page
     std::vector<int> baseindexes;
-    std::vector<PIXA *> comps;
 };
 
 // see comments in .h file
@@ -122,7 +120,8 @@ jbig2_init(float thresh, float weight, int xres, int yres, bool full_headers,
   ctx->refine_level = refine_level;
   ctx->avg_templates = NULL;
 
-  ctx->classer = jbCorrelationInit(JB_CONN_COMPS, 9999, 9999, thresh, weight);
+  ctx->classer = jbCorrelationInitWithoutComponents(JB_CONN_COMPS, 9999, 9999,
+                                                    thresh, weight);
 
   return ctx;
 }
@@ -130,14 +129,6 @@ jbig2_init(float thresh, float weight, int xres, int yres, bool full_headers,
 // see comments in .h file
 void
 jbig2_destroy(struct jbig2ctx *ctx) {
-  for (std::vector<BOXA *>::iterator i = ctx->boxes.begin();
-       i != ctx->boxes.end(); ++i) {
-    boxaDestroy(&(*i));
-  }
-  for (std::vector<PIXA *>::iterator i = ctx->comps.begin();
-       i != ctx->comps.end(); ++i) {
-    pixaDestroy(&(*i));
-  }
   if (ctx->avg_templates) pixaDestroy(&ctx->avg_templates);
   jbClasserDestroy(&ctx->classer);
   delete ctx;
@@ -163,10 +154,14 @@ jbig2_add_page(struct jbig2ctx *ctx, struct Pix *input) {
   ctx->page_height.push_back(bw->h);
 
   if (ctx->refinement) {
-    BOXA *boxes = boxaCopy(ctx->classer->boxas, L_CLONE);
+    // This code is broken by (my) recent changes to Leptonica. Needs to be
+    // fixed at some point, but not too important at the moment since we don't
+    // use refinement.
+
+    /*BOXA *boxes = boxaCopy(ctx->classer->boxas, L_CLONE);
     ctx->boxes.push_back(boxes);
     PIXA *comps = pixaCopy(ctx->classer->pixas, L_CLONE);
-    ctx->comps.push_back(comps);
+    ctx->comps.push_back(comps);*/
   }
 
   pixDestroy(&bw);
@@ -179,6 +174,42 @@ jbig2_add_page(struct jbig2ctx *ctx, struct Pix *input) {
 // see comments in .h file
 uint8_t *
 jbig2_pages_complete(struct jbig2ctx *ctx, int *const length) {
+  /*
+     Graying support - disabled.
+     It's not very clear that graying actaully buys you much extra quality
+     above pick-the-first. Also, aligning the gray glyphs requires the
+     original source image.
+
+     Remember that you need the Init without WithoutComponents to use this */
+
+
+  /*NUMA *samples_per_composition;
+  PTA *grayed_centroids;
+  PIXA *grayed;
+
+  grayed = jbAccumulateComposites(ctx->classer->pixaa, &samples_per_composition,
+                                  &grayed_centroids);
+
+  if (!grayed || grayed->n != ctx->classer->pixaa->n) {
+    fprintf(stderr, "Graying failed\n");
+    return NULL;
+  }
+
+  ctx->avg_templates = pixaCreate(0);
+  for (int i = 0; i < grayed->n; ++i) {
+    int samples;
+    numaGetIValue(samples_per_composition, i, &samples);
+    PIX *avg = pixFinalAccumulateThreshold(grayed->pix[i], 0,
+                                           (samples + 1) >> 1);
+    pixaAddPix(ctx->avg_templates, avg, L_INSERT);
+    //char b[512];
+    //sprintf(b, "gray-%d/th.png", i);
+    //pixWrite(b, avg, IFF_PNG);
+  }
+
+  pixaDestroy(&grayed);
+  numaDestroy(&samples_per_composition);*/
+
   // We find the symbols which only appear on a single page and encode them in
   // a symbol dictionary just for that page. This is because we want to keep
   // the size of the global dictionary down as some PDF readers appear to
@@ -187,6 +218,8 @@ jbig2_pages_complete(struct jbig2ctx *ctx, int *const length) {
   // (as a short cut, we just pick the symbols which are only used once since,
   // in testing, all the symbols which appear on only one page appear only once
   // on that page)
+
+  const bool single_page = ctx->classer->npages == 1;
 
   // maps symbol number to the number of times it has been used
   // pixat->n is the number of symbols
@@ -203,7 +236,7 @@ jbig2_pages_complete(struct jbig2ctx *ctx, int *const length) {
   std::vector<unsigned> multiuse_symbols;
   for (int i = 0; i < ctx->classer->pixat->n; ++i) {
     if (symbol_used[i] == 0) abort();
-    if (symbol_used[i] > 1) multiuse_symbols.push_back(i);
+    if (symbol_used[i] > 1 || single_page) multiuse_symbols.push_back(i);
   }
   ctx->num_global_symbols = multiuse_symbols.size();
 
@@ -216,7 +249,7 @@ jbig2_pages_complete(struct jbig2ctx *ctx, int *const length) {
     ctx->pagecomps[page_num].push_back(i);
     int symbol;
     numaGetIValue(ctx->classer->naclass, i, &symbol);
-    if (symbol_used[symbol] == 1) {
+    if (symbol_used[symbol] == 1 && !single_page) {
       ctx->single_use_symbols[page_num].push_back(symbol);
     }
   }
@@ -395,15 +428,18 @@ jbig2_produce_page(struct jbig2ctx *ctx, int page_no,
 
   const int numsyms = ctx->num_global_symbols +
                       ctx->single_use_symbols[page_no].size();
-  BOXA *const boxes = ctx->refinement ? ctx->boxes[page_no] : NULL;
+  //BOXA *const boxes = ctx->refinement ? ctx->boxes[page_no] : NULL;
   int baseindex = ctx->refinement ? ctx->baseindexes[page_no] : 0;
   jbig2enc_textregion(&ectx, ctx->symmap, second_symbol_map,
                       ctx->pagecomps[page_no],
-                      ctx->classer->ptall, ctx->classer->pixat,
+                      ctx->classer->ptall,
+                      ctx->avg_templates ? ctx->avg_templates : ctx->classer->pixat,
                       ctx->classer->naclass, 1,
                       log2up(numsyms),
-                      ctx->refinement ? ctx->comps[page_no] : NULL,
-                      boxes, baseindex, ctx->refine_level);
+                      //ctx->refinement ? ctx->comps[page_no] : NULL,
+                      NULL,
+                      /* boxes */ NULL, baseindex, ctx->refine_level,
+                      ctx->avg_templates == NULL);
   const int textdatasize = jbig2enc_datasize(&ectx);
   textreg.width = htonl(ctx->page_width[page_no]);
   textreg.height = htonl(ctx->page_height[page_no]);
@@ -534,6 +570,10 @@ jbig2_encode_generic(struct Pix *const bw, const bool full_headers, const int xr
   pageinfo.yres = htonl(yres ? yres : bw->yres);
   pageinfo.is_lossless = 1;
 
+#ifdef SURPRISE_MAP
+  dprintf(3, "P5\n%d %d 255\n", bw->w, bw->h);
+#endif
+
   jbig2enc_bitimage(&ctx, (u8 *) bw->data, bw->w, bw->h, duplicate_line_removal);
   jbig2enc_final(&ctx);
   const int datasize = jbig2enc_datasize(&ctx);
@@ -543,6 +583,10 @@ jbig2_encode_generic(struct Pix *const bw, const bool full_headers, const int xr
   seg2.type = segment_imm_generic_region;
   seg2.page = 1;
   seg2.len = sizeof(genreg) + datasize;
+
+  endseg.number = segnum;
+  segnum++;
+  endseg.page = 1;
 
   genreg.width = htonl(bw->w);
   genreg.height = htonl(bw->h);

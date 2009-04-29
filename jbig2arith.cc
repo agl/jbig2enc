@@ -18,7 +18,6 @@
 #include "jbig2arith.h"
 #include <string.h>
 #include <stdio.h>
-#include <sys/time.h>
 
 #define u64 uint64_t
 #define u32 uint32_t
@@ -26,7 +25,11 @@
 #define u8  uint8_t
 
 // C++ doesn't have C99 restricted pointers, but GCC does allow __restrict__
+#if !defined(WIN32)
 #define restrict __restrict__
+#else
+#define restrict
+#endif
 
 // -----------------------------------------------------------------------------
 // This the structure for a single state of the adaptive arithmetic compressor
@@ -34,8 +37,7 @@
 struct context {
   u16 qe;
   u8 mps, lps;
-} __attribute__ ((packed));
-
+};
 
 // -----------------------------------------------------------------------------
 // And this is the table of states for that adaptive compressor
@@ -105,7 +107,9 @@ struct context ctbl[] = {
 #undef F
 };
 
-//#define BRANCH_OPT
+#if __GNUC__ >= 4
+#define BRANCH_OPT
+#endif
 
 // GCC peephole optimisations
 #ifdef BRANCH_OPT
@@ -244,6 +248,13 @@ encode_bit(struct jbig2enc_ctx *restrict ctx, u8 *restrict context, u32 ctxnum, 
 #endif
 
   if (unlikely(d != mps)) goto codelps;
+#ifdef SURPRISE_MAP
+  {
+  u8 b = static_cast<unsigned char>
+    (((static_cast<float>(qe) / 0xac02) * 255));
+  write(3, &b, 1);
+  }
+#endif
   ctx->a -= qe;
   if (unlikely((ctx->a & 0x8000) == 0)) {
     if (unlikely(ctx->a < qe)) {
@@ -260,6 +271,13 @@ encode_bit(struct jbig2enc_ctx *restrict ctx, u8 *restrict context, u32 ctxnum, 
   return;
 
 codelps:
+#ifdef SURPRISE_MAP
+  {
+  u8 b = static_cast<unsigned char>
+    ((1.0f - (static_cast<float>(qe) / 0xac02)) * 255);
+  write(3, &b, 1);
+  }
+#endif
   ctx->a -= qe;
   if (ctx->a < qe) {
     ctx->c += qe;

@@ -5,31 +5,44 @@
 #define THIRD_PARTY_JBIG2ENC_JBIG2SEGMENTS_H__
 
 #include <vector>
+#ifdef _MSC_VER
+#include <winsock2.h>
+#else
 #include <netinet/in.h>
+#endif
 
 // -----------------------------------------------------------------------------
-// See comments in jbig2struct.h about the bit packing in this structure.
+// See comments in jbig2structs.h about the bit packing in this structure.
 // -----------------------------------------------------------------------------
+#if defined(WIN32)
+#pragma pack(1)
+#endif
 struct jbig2_segment {
   u32 number;
 #ifndef _BIG_ENDIAN
-  unsigned type : 6;
-  unsigned page_assoc_size : 1;
-  unsigned deferred_non_retain : 1;
+  unsigned char type : 6;
+  unsigned char page_assoc_size : 1;
+  unsigned char deferred_non_retain : 1;
 #else
-  unsigned deferred_non_retain : 1;
-  unsigned page_assoc_size : 1;
-  unsigned type : 6;
+  unsigned char deferred_non_retain : 1;
+  unsigned char page_assoc_size : 1;
+  unsigned char type : 6;
 #endif
 
 #ifndef _BIG_ENDIAN
-  unsigned retain_bits : 5;
-  unsigned segment_count : 3;
+  unsigned char retain_bits : 5;
+  unsigned char segment_count : 3;
 #else
-  unsigned segment_count : 3;
-  unsigned retain_bits : 5;
+  unsigned char segment_count : 3;
+  unsigned char retain_bits : 5;
 #endif
-} __attribute__((packed));
+}
+#if defined(WIN32)
+#pragma pack()
+#else
+__attribute__((packed));
+#endif
+;
 
 // -----------------------------------------------------------------------------
 // This structure represents a JBIG2 segment header because they have too many
