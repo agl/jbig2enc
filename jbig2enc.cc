@@ -19,6 +19,9 @@
 #include <vector>
 #include <algorithm>
 
+#include <stdio.h>
+#include <string.h>
+
 #include <allheaders.h>
 #include <pix.h>
 

@@ -21,6 +21,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <fcntl.h>
+#include <string.h>
+#include <unistd.h>
 
 #include <allheaders.h>
 #include <pix.h>
@@ -284,7 +286,7 @@ main(int argc, char **argv) {
         return 1;
       }
 
-      if (threshold > 0.9 | threshold < 0.4) {
+      if (threshold > 0.9 || threshold < 0.4) {
         fprintf(stderr, "Invalid value for threshold\n");
         fprintf(stderr, "(must be between 0.4 and 0.9)\n");
         return 10;

@@ -26,6 +26,8 @@
 #define restrict __restrict__
 #endif
 
+#include <stdio.h>
+
 #include <allheaders.h>
 #include <pix.h>
 

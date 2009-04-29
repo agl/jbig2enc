@@ -16,8 +16,10 @@
 // limitations under the License.
 
 #include "jbig2arith.h"
+
 #include <string.h>
 #include <stdio.h>
+#include <stdlib.h>
 
 #define u64 uint64_t
 #define u32 uint32_t
