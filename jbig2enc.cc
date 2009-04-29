@@ -97,6 +97,7 @@ struct jbig2ctx {
   // symbol dictionary.
   std::map<int, int> symmap;
   bool refinement;
+  PIXA *avg_templates;  // grayed templates
   int refine_level;
   // only used when using refinement
     // the bounding boxes of the symbols of each page.
@@ -119,6 +120,7 @@ jbig2_init(float thresh, float weight, int xres, int yres, bool full_headers,
   ctx->symtab_segment = -1;
   ctx->refinement = refine_level >= 0;
   ctx->refine_level = refine_level;
+  ctx->avg_templates = NULL;
 
   ctx->classer = jbCorrelationInit(JB_CONN_COMPS, 9999, 9999, thresh, weight);
 
@@ -136,6 +138,7 @@ jbig2_destroy(struct jbig2ctx *ctx) {
        i != ctx->comps.end(); ++i) {
     pixaDestroy(&(*i));
   }
+  if (ctx->avg_templates) pixaDestroy(&ctx->avg_templates);
   jbClasserDestroy(&ctx->classer);
   delete ctx;
 }
@@ -144,11 +147,13 @@ jbig2_destroy(struct jbig2ctx *ctx) {
 void
 jbig2_add_page(struct jbig2ctx *ctx, struct Pix *input) {
   PIX *bw;
-  if (ctx->xres >= 300) {
+
+  if (false /*ctx->xres >= 300*/) {
     bw = remove_flyspecks(input, (int) (0.0084*ctx->xres));
   } else {
-    bw = input;
+    bw = pixClone(input);
   }
+
   if (ctx->refinement) {
     ctx->baseindexes.push_back(ctx->classer->baseindex);
   }
@@ -164,9 +169,7 @@ jbig2_add_page(struct jbig2ctx *ctx, struct Pix *input) {
     ctx->comps.push_back(comps);
   }
 
-  if (bw != input) {
-    pixDestroy(&bw);
-  }
+  pixDestroy(&bw);
 }
 
 #define F(x) memcpy(ret + offset, &x, sizeof(x)) ; offset += sizeof(x)
@@ -282,8 +285,9 @@ jbig2_pages_complete(struct jbig2ctx *ctx, int *const length) {
   struct jbig2_symbol_dict symtab;
   memset(&symtab, 0, sizeof(symtab));
 
-  jbig2enc_symboltable(&ectx, ctx->classer->pixat,
-                       &multiuse_symbols, &ctx->symmap);
+  jbig2enc_symboltable
+    (&ectx, ctx->avg_templates ? ctx->avg_templates : ctx->classer->pixat,
+     &multiuse_symbols, &ctx->symmap, ctx->avg_templates == NULL);
   const int symdatasize = jbig2enc_datasize(&ectx);
 
   symtab.a1x = 3;
@@ -370,9 +374,11 @@ jbig2_produce_page(struct jbig2ctx *ctx, int page_no,
     symseg.type = segment_symbol_table;
     symseg.page = ctx->pdf_page_numbering ? 1 : 1 + page_no;
 
-    jbig2enc_symboltable(&extrasymtab_ctx, ctx->classer->pixat,
-                         &ctx->single_use_symbols[page_no],
-                         &second_symbol_map);
+    jbig2enc_symboltable
+      (&extrasymtab_ctx,
+       ctx->avg_templates ? ctx->avg_templates : ctx->classer->pixat,
+       &ctx->single_use_symbols[page_no], &second_symbol_map,
+       ctx->avg_templates == NULL);
     symtab.a1x = 3;
     symtab.a1y = -1;
     symtab.a2x = -3;

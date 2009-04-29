@@ -30,11 +30,13 @@ struct jbig2enc_ctx;
 // symmap: an empty map which is filled. The symbols are written to the file in
 //         a different order than they are given in symbols. The maps an index
 //         into the symbols array to a symbol number in the file
+// unborder_symbols: if true, remove a border from every element of symbols
 // -----------------------------------------------------------------------------
 void jbig2enc_symboltable(struct jbig2enc_ctx *__restrict__ ctx,
                           PIXA *__restrict__ const symbols,
                           std::vector<unsigned> *__restrict__ symbol_list,
-                          std::map<int, int> *symmap);
+                          std::map<int, int> *symmap,
+                          bool unborder_symbols);
 
 // -----------------------------------------------------------------------------
 // Write a text region.

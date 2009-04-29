@@ -76,7 +76,7 @@ void
 jbig2enc_symboltable(struct jbig2enc_ctx *restrict ctx,
                      PIXA *restrict const symbols,
                      std::vector<unsigned> *__restrict__ symbol_list,
-                     std::map<int, int> *symmap) {
+                     std::map<int, int> *symmap, const bool unborder_symbols) {
   const unsigned n = symbol_list->size();
   int number = 0;
 
@@ -98,7 +98,7 @@ jbig2enc_symboltable(struct jbig2enc_ctx *restrict ctx,
   unsigned hcheight = 0;
   for (unsigned i = 0; i < n;) {
     // height is the height of this class of symbols
-    const unsigned height = S(syms[i])->h - 2*kBorderSize;
+    const unsigned height = S(syms[i])->h - (unborder_symbols ? 2*kBorderSize : 0);
 #ifdef JBIG2_DEBUGGING
     fprintf(stderr, "height is %d\n", height);
 #endif
@@ -107,7 +107,7 @@ jbig2enc_symboltable(struct jbig2enc_ctx *restrict ctx,
     hc.push_back(syms[i]);  // this is the first member of the new class
     // walk the vector until we find a symbol with a different height
     for (j = i + 1; j < n; ++j) {
-      if (S(syms[j])->h - 2*kBorderSize != height) break;
+      if (S(syms[j])->h - (unborder_symbols ? 2*kBorderSize : 0) != height) break;
       hc.push_back(syms[j]);  // add each symbol of the same height to the class
     }
 #ifdef JBIG2_DEBUGGING
@@ -124,7 +124,7 @@ jbig2enc_symboltable(struct jbig2enc_ctx *restrict ctx,
     // encode each symbol
     for (std::vector<int>::const_iterator k = hc.begin(); k != hc.end(); ++k) {
       const int sym = *k;
-      const int thissymwidth = S(sym)->w - 2*kBorderSize;
+      const int thissymwidth = S(sym)->w - (unborder_symbols ? 2*kBorderSize : 0);
       const int deltawidth = thissymwidth - symwidth;
 #ifdef JBIG2_DEBUGGING
       fprintf(stderr, "    h: %d\n", S(sym)->w);
@@ -132,14 +132,21 @@ jbig2enc_symboltable(struct jbig2enc_ctx *restrict ctx,
       symwidth += deltawidth;
       //fprintf(stderr, "width is %d\n", S(sym)->w);
       jbig2enc_int(ctx, JBIG2_IADW, deltawidth);
-      // the exemplars are stored with a border
-      PIX *unbordered = pixRemoveBorder(S(sym), kBorderSize);
-      // encoding the bitmap requires that the pad bits be zero
+
+      PIX *unbordered;
+      if (unborder_symbols) {
+        // the exemplars are stored with a border
+        unbordered = pixRemoveBorder(S(sym), kBorderSize);
+        // encoding the bitmap requires that the pad bits be zero
+      } else {
+        unbordered = pixClone(S(sym));
+      }
       pixSetPadBits(unbordered, 0);
       jbig2enc_bitimage(ctx, (uint8_t *) unbordered->data, thissymwidth, height,
                         false);
       // add this symbol to the map
       (*symmap)[sym] = number++;
+      pixDestroy(&unbordered);
     }
     // OOB marks the end of the height class
     //fprintf(stderr, "OOB\n");

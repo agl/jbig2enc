@@ -40,7 +40,46 @@ usage(const char *argv0) {
   fprintf(stderr, "  -r --refine: use refinement (requires -s: lossless)\n");
   fprintf(stderr, "  -O <outfile>: dump thresholded image as PNG\n");
   fprintf(stderr, "  -2: upsample 2x before thresholding\n");
-  fprintf(stderr, "  -4: upsample 4x before thresholding\n\n");
+  fprintf(stderr, "  -4: upsample 4x before thresholding\n");
+  fprintf(stderr, "  -S: remove images from a mixed input\n");
+  fprintf(stderr, "  --image-output: write image part of mixed input to this file (PNG)\n\n");
+}
+
+// -----------------------------------------------------------------------------
+// Morphological operations for segmenting an image into text regions
+// -----------------------------------------------------------------------------
+static const char *segment_mask_sequence = "r11";
+static const char *segment_seed_sequence = "r1143 + o4.4 + x4";  /* maybe o6.6 */
+static const char *segment_dilation_sequence = "d3.3";
+
+// -----------------------------------------------------------------------------
+// Removes images from a source image and returns the result. Optionally can
+// dump the image part of the image to a file. Mutates the input.
+//
+//   pixb: binary input image
+//   output_output: NULL or filename to write the image-parts to
+//
+// Thanks to Dan Bloomberg for this
+// -----------------------------------------------------------------------------
+
+static void
+segment_image(PIX *pixb, const char *other_output) {
+  // Make seed and mask, and fill seed into mask
+  PIX *pixmask4 = pixMorphSequence(pixb, (char *) segment_mask_sequence, 0);
+  PIX *pixseed4 = pixMorphSequence(pixb, (char *) segment_seed_sequence, 0);
+  PIX *pixsf4 = pixSeedfillBinary(NULL, pixseed4, pixmask4, 8);
+  PIX *pixd4 = pixMorphSequence(pixsf4, (char *) segment_dilation_sequence, 0);
+  PIX *pixd = pixExpandBinary(pixd4, 4);
+
+  pixSubtract(pixb, pixb, pixd);
+
+  if (other_output) pixWrite(other_output, pixd, IFF_PNG);
+
+  pixDestroy(&pixd);
+  pixDestroy(&pixd4);
+  pixDestroy(&pixsf4);
+  pixDestroy(&pixseed4);
+  pixDestroy(&pixmask4);
 }
 
 int
@@ -54,6 +93,8 @@ main(int argc, char **argv) {
   bool up2 = false, up4 = false;
   const char *output_threshold = NULL;
   const char *basename = "output";
+  const char *image_output = NULL;
+  bool segment = false;
   int i;
 
   for (i = 1; i < argc; ++i) {
@@ -103,6 +144,17 @@ main(int argc, char **argv) {
       continue;
     }
 
+    if (strcmp(argv[i], "-S") == 0) {
+      segment = true;
+      continue;
+    }
+
+    if (strcmp(argv[i], "--image-output") == 0) {
+      image_output = argv[i+1];
+      i++;
+      continue;
+    }
+
     if (strcmp(argv[i], "-t") == 0) {
       char *endptr;
       threshold = strtod(argv[i+1], &endptr);
@@ -112,8 +164,9 @@ main(int argc, char **argv) {
         return 1;
       }
 
-      if (threshold > 1.0 | threshold < 0.0) {
+      if (threshold > 0.9 | threshold < 0.4) {
         fprintf(stderr, "Invalid value for threshold\n");
+        fprintf(stderr, "(must be between 0.4 and 0.9)\n");
         return 10;
       }
       i++;
@@ -192,6 +245,10 @@ main(int argc, char **argv) {
 
     if (output_threshold) {
       pixWrite(output_threshold, pixt, IFF_PNG);
+    }
+
+    if (segment) {
+      segment_image(pixt, image_output);
     }
 
     if (!symbol_mode) {

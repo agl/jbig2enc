@@ -39,6 +39,11 @@ parsing.
 
 CHANGES:
 
+0.22:
+   * Added segmentation support to extract text from mixed images
+   * Flyspeck removal disabled for now
+   * A few minor fixes
+
 0.21:
    * Patch from Alberto Accomazzi to fix the pdf.py script and to output more
      sensible filenames in pdf mode
