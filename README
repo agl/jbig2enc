@@ -1,0 +1,34 @@
+Welcome, gentle reader.
+
+This is an encoder for JBIG2:
+www.jpeg.org/public/fcd14492.pdf
+
+JBIG2 encodes bi-level (1 bpp) images using a number of clever tricks to get
+better compression than G4. This encoder can:
+   * Generate JBIG2 files, or fragments for embedding in PDFs
+   * Generic region encoding
+   * Symbol extraction, classification and text region coding
+
+It uses the (Apache-ish licensed) Leptonica library:
+  http://www.leptonica.com/
+
+KNOWN BUGS:
+
+The symbol classification goes wrong with very heavy glyphs leading to gross
+misclassification (called cootoons).
+
+BUILDING:
+
+First, read the file PATENTS in the same directory as this file.
+
+Fetch leptonica from its website and build it. For this you will also
+need the standard libtiff, libpng and libjpeg.
+
+If leptonica was unpacked in ../leptonlib-1.33/ you should just be able to type
+make. Otherwise, fix up the path at the beginning of the Makefile first.
+
+USAGE:
+
+See the jbig2enc.h header for the high level API, or the jbig2 program for an
+example of usage. It's very short and most of it is taken up with argument
+parsing.
