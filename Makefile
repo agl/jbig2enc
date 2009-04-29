@@ -1,6 +1,8 @@
 CC=g++
-LEPTONICA=../leptonlib-1.33/
-CFLAGS=-I${LEPTONICA}/src -Wall -I/usr/include -L/usr/lib -ggdb
+LEPTONICA=../leptonlib-1.35
+# For example, a fink MacOSX install:
+# EXTRA=-I/sw/include/ -I/sw/include/libpng -I/sw/include/libjpeg -L/sw/lib
+CFLAGS=-I${LEPTONICA}/src -Wall -I/usr/include -L/usr/lib -O3 ${EXTRA}
 
 jbig2: libjbig2enc.a jbig2.cc
 	$(CC) -o jbig2 jbig2.cc -L. -ljbig2enc -limage -L${LEPTONICA}/lib/nodebug $(CFLAGS) -lpng -ljpeg -ltiff -lm
@@ -14,6 +16,9 @@ jbig2arith.o: jbig2arith.cc jbig2arith.h
 	$(CC) -c jbig2arith.cc $(CFLAGS)
 jbig2sym.o: jbig2sym.cc jbig2arith.h
 	$(CC) -c jbig2sym.cc -DUSE_EXT $(CFLAGS)
+
+delta: delta.c
+	$(CC) -o delta delta.c $(CFLAGS) -limage -L${LEPTONICA}/lib/nodebug -lpng -ljpeg -ltiff -lm
 
 clean:
 	rm -f *.o jbig2 libjbig2enc.a

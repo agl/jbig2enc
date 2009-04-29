@@ -31,7 +31,7 @@ struct jbig2enc_ctx;
 //         into the symbols array to a symbol number in the file
 // -----------------------------------------------------------------------------
 void jbig2enc_symboltable(struct jbig2enc_ctx *__restrict__ ctx,
-                          PIXAA *__restrict__ const symbols,
+                          PIXA *__restrict__ const symbols,
                           std::map<int, int> *symmap);
 
 // -----------------------------------------------------------------------------
@@ -40,19 +40,29 @@ void jbig2enc_symboltable(struct jbig2enc_ctx *__restrict__ ctx,
 // A text region is a list of placements of symbols. The symbols must already
 // have been coded.
 //
-// symmap: This maps class numbers to symbol numbers. Only symbol number appear
-//         in the JBIG2 data stream
-// boxes: This is an array of positions of symbols on the page
-// symbols: (see _symboltable, above)
+// symmap: This maps class numbers to symbol numbers. Only symbol numbers
+//         appear in the JBIG2 data stream
+// ll: This is an array of the lower-left corners of the boxes for each symbol
 // assignments: an array, of the same length as boxes, mapping each box to a
 //              symbol
 // stripwidth: 1 is a safe default (one of [1, 2, 4, 8])
 // symbits: number of bits needed to code the symbol number (log2(number of
 //          symbols) - rounded up)
+// source: an array of the original images for all the connected components.
+//         If NULL, refinement is disabled. (page indexed)
+// boxes: if source is non-NULL, this is page based list of boxes of symbols on
+//        the page
+// baseindex: if source is non-NULL, this is the component number of the first
+//            component on this page
+// refine_level: the number of incorrect pixels allowed before refining.
 // -----------------------------------------------------------------------------
 void jbig2enc_textregion(struct jbig2enc_ctx *__restrict__ ctx,
                          /*const*/ std::map<int, int> &symmap,
-                         const BOXA *const boxes, const PIXAA *const symbols,
-                         NUMA *assignments, int stripwidth, int symbits);
+                         const std::vector<int> &comps,
+                         PTA *const ll, PIXA *const symbols,
+                         NUMA *assignments,
+                         int stripwidth, int symbits,
+                         PIXA *source, BOXA *boxes, int baseindex,
+                         int refine_level);
 
 #endif  // JBIG2ENC_JBIG2SYM_H__

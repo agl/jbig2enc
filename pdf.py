@@ -1,0 +1,137 @@
+import sys
+import re
+import struct
+
+# This is a very simple script to make a PDF file out of the output of a
+# multipage symbol compression.
+# Run ./jbig2 -s <other options> image1.jpeg image1.jpeg ...
+# python pdf.py > out.pdf
+
+class Ref:
+  def __init__(self, x):
+    self.x = x
+  def __str__(self):
+    return "%d 0 R" % self.x
+
+class Dict:
+  def __init__(self, values = {}):
+    self.d = {}
+    self.d.update(values)
+
+  def __str__(self):
+    s = ['<< ']
+    for (x, y) in self.d.items():
+      s.append('/%s ' % x)
+      s.append(str(y))
+      s.append("\n")
+    s.append(">>\n")
+
+    return ''.join(s)
+
+global_next_id = 1
+
+class Obj:
+  next_id = 1
+  def __init__(self, d = {}, stream = None):
+    global global_next_id
+
+    if stream is not None:
+      d['Length'] = str(len(stream))
+    self.d = Dict(d)
+    self.stream = stream
+    self.id = global_next_id
+    global_next_id += 1
+
+  def __str__(self):
+    s = []
+    s.append(str(self.d))
+    if self.stream is not None:
+      s.append('stream\n')
+      s.append(self.stream)
+      s.append('\nendstream\n')
+    s.append('endobj\n')
+
+    return ''.join(s)
+
+class Doc:
+  def __init__(self):
+    self.objs = []
+    self.pages = []
+
+  def add_object(self, o):
+    self.objs.append(o)
+    return o
+
+  def add_page(self, o):
+    self.pages.append(o)
+    return self.add_object(o)
+
+  def __str__(self):
+    a = []
+    j = [0]
+    offsets = []
+
+    def add(x):
+      a.append(x)
+      j[0] += len(x) + 1
+    add('%PDF-1.4')
+    for o in self.objs:
+      offsets.append(j[0])
+      add('%d 0 obj' % o.id)
+      add(str(o))
+    xrefstart = j[0]
+    a.append('xref')
+    a.append('0 %d' % len(offsets))
+    a.append('0000000000 65535 f ')
+    for o in offsets:
+      a.append('%010d 00000 n ' % o)
+    a.append('')
+    a.append('trailer')
+    a.append('<< /Size %d\n/Root 1 0 R >>' % len(offsets))
+    a.append('startxref')
+    a.append(str(xrefstart))
+    a.append('%%EOF')
+
+    sys.stderr.write(str(offsets) + "\n")
+
+    return '\n'.join(a)
+
+def ref(x):
+  return '%d 0 R' % x
+
+def main():
+  doc = Doc()
+  doc.add_object(Obj({'Type' : '/Catalog', 'Outlines' : ref(2), 'Pages' : ref(3)}))
+  doc.add_object(Obj({'Type' : '/Outlines', 'Count': '0'}))
+  pages = Obj({'Type' : '/Pages'})
+  doc.add_object(pages)
+  symd = doc.add_object(Obj({}, file('symboltable', 'r').read()))
+  page_objs = []
+
+  for n in range(1000):
+    try:
+      contents = file('page-%d' % n).read()
+    except IOError:
+      break
+    (width, height) = struct.unpack('>II', contents[11:19])
+    xobj = Obj({'Type': '/XObject', 'Subtype': '/Image', 'Width':
+        str(width), 'Height': str(height), 'ColorSpace': '/DeviceGray',
+        'BitsPerComponent': '1', 'Filter': '/JBIG2Decode', 'DecodeParms':
+        ' << /JBIG2Globals %d 0 R >>' % symd.id}, contents)
+    contents = Obj({}, 'q %d 0 0 %d 0 0 cm /Im1 Do Q' % (width, height))
+    resources = Obj({'ProcSet': '[/PDF /ImageB]',
+        'XObject': '<< /Im1 %d 0 R >>' % xobj.id})
+    page = Obj({'Type': '/Page', 'Parent': '3 0 R',
+        'MediaBox': '[ 0 0 %d %d ]' % (width, height),
+        'Contents': ref(contents.id),
+        'Resources': ref(resources.id)})
+    [doc.add_object(x) for x in [xobj, contents, resources, page]]
+    page_objs.append(page)
+
+    pages.d.d['Count'] = str(len(page_objs))
+    pages.d.d['Kids'] = '[' + ' '.join([ref(x.id) for x in page_objs]) + ']'
+
+  print str(doc)
+
+if __name__ == '__main__':
+  main()

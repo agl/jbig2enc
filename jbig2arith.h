@@ -26,6 +26,8 @@
 
 //#define JBIG2_DEBUGGING
 //#define CODER_DEBUGGING
+//#define SYM_DEBUGGING
+//#define SYMBOL_COMPRESSION_DEBUGGING
 
 // -----------------------------------------------------------------------------
 // This is the context for the arithmetic encoder used in JBIG2. The coder is a
@@ -36,7 +38,7 @@
 // JBIG2_OUTPUTBUFFER_SIZE. These are chained in a linked list.
 // -----------------------------------------------------------------------------
 struct jbig2enc_ctx {
-  // these are the current 'value' of the arithmetic coder
+  // these are the current state of the arithmetic coder
   uint32_t c;
   uint16_t a;
   uint8_t ct, b;
@@ -48,6 +50,7 @@ struct jbig2enc_ctx {
   int outbuf_used;  // number of bytes used in outbuf
   uint8_t context[JBIG2_MAX_CTX];  // state machine context for encoding images
   uint8_t intctx[13][512];  // 512 bytes of context indexes for each of 13 different int decodings
+                            // this data is also used for refinement coding
   uint8_t *iaidctx;  // size of this context not known at construction time
 };
 
@@ -120,13 +123,36 @@ void jbig2enc_image(struct jbig2enc_ctx *__restrict__ ctx,
 // case the data pointer points to packed data.
 //
 // This is designed for Leptonica's 1bpp packed format images. Each row is some
-// number of 32-bit words. Pixels are in native-byte-order in each word.
+// number of 32-bit words.
 //
 // *The pad bits at the end of each line must be zero.*
 // -----------------------------------------------------------------------------
 void jbig2enc_bitimage(struct jbig2enc_ctx *__restrict__ ctx,
                        const uint8_t *__restrict__ data, int mx, int my,
                        bool duplicate_line_removal);
+
+
+// -----------------------------------------------------------------------------
+// Encode the refinement of an exemplar to a bitmap.
+//
+// This encodes the difference between two images. If the template image is
+// close to the final image the amount of data needed should hopefully be
+// small.
+//   templ: the template image
+//   tx, ty: the size of the template image
+//   target: the desired image
+//   mx, my: the size of the desired image
+//   ox, oy: offset of the desired image from the template image.
+//           ox is limited to [-1, 0, 1]
+//
+// This uses Leptonica's 1bpp packed images (see comments above last function).
+//
+// *The pad bits at the end of each line, for both images, must be zero*
+// -----------------------------------------------------------------------------
+void jbig2enc_refine(struct jbig2enc_ctx *__restrict__ ctx,
+                     const uint8_t *__restrict__ templ, int tx, int ty,
+                     const uint8_t *__restrict__ target, int mx, int my,
+                     int ox, int oy);
 
 // -----------------------------------------------------------------------------
 // Init a new context
@@ -139,7 +165,7 @@ void jbig2enc_init(struct jbig2enc_ctx *ctx);
 void jbig2enc_dealloc(struct jbig2enc_ctx *ctx);
 
 // -----------------------------------------------------------------------------
-// Drop all the data stored in a context
+// Flush all the data stored in a context
 // -----------------------------------------------------------------------------
 void jbig2enc_flush(struct jbig2enc_ctx *ctx);
 

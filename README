@@ -7,15 +7,19 @@ JBIG2 encodes bi-level (1 bpp) images using a number of clever tricks to get
 better compression than G4. This encoder can:
    * Generate JBIG2 files, or fragments for embedding in PDFs
    * Generic region encoding
-   * Symbol extraction, classification and text region coding
+   * Perform symbol extraction, classification and text region coding
+   * Perform refinement coding and,
+   * Compress multipage documents
 
 It uses the (Apache-ish licensed) Leptonica library:
   http://www.leptonica.com/
 
+You'll need version 1.35.
+
 KNOWN BUGS:
 
-The symbol classification goes wrong with very heavy glyphs leading to gross
-misclassification (called cootoons).
+The refinement coding causes Acrobat to crash. It's not known if this is a bug
+in Acrobat, though it may well be.
 
 BUILDING:
 
@@ -24,7 +28,7 @@ First, read the file PATENTS in the same directory as this file.
 Fetch leptonica from its website and build it. For this you will also
 need the standard libtiff, libpng and libjpeg.
 
-If leptonica was unpacked in ../leptonlib-1.33/ you should just be able to type
+If leptonica was unpacked in ../leptonlib-1.35/ you should just be able to type
 make. Otherwise, fix up the path at the beginning of the Makefile first.
 
 USAGE:

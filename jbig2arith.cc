@@ -41,7 +41,7 @@ struct context {
 // And this is the table of states for that adaptive compressor
 // -----------------------------------------------------------------------------
 struct context ctbl[] = {
-  // This is the standard state table from 
+  // This is the standard state table from
   // Table E.1 of the standard. The switch has been omitted and
   // those states are included below
 #define STATETABLE \
@@ -104,6 +104,8 @@ struct context ctbl[] = {
 #undef SWITCH
 #undef F
 };
+
+//#define BRANCH_OPT
 
 // GCC peephole optimisations
 #ifdef BRANCH_OPT
@@ -195,7 +197,7 @@ byteout(struct jbig2enc_ctx *restrict ctx) {
   ctx->b += 1;
   if (ctx->b != 0xff) goto lblock;
   ctx->c &= 0x7ffffff;
-  
+
 rblock:
   if (ctx->bp >= 0) {
 #ifdef TRACE
@@ -363,7 +365,7 @@ jbig2enc_int(struct jbig2enc_ctx *restrict ctx, int proc, int value) {
   if (value > 100000 || value < -100000) abort();
 
   u32 prev = 1;
-  
+
   for (i = 0; ; ++i) {
     if (intencrange[i].bot <= value && intencrange[i].top >= value) break;
   }
@@ -433,7 +435,7 @@ static u8 image_get(const u8 *restrict image, int x, int y, int mx, int my) {
   if (y < 0) return 0;
   if (x >= mx) return 0;
   if (y >= my) return 0;
-  return image[mx * y + x] ^ 1;
+  return image[mx * y + x];
 }
 
 // see comments in .h file
@@ -474,11 +476,11 @@ jbig2enc_bitimage(struct jbig2enc_ctx *restrict ctx, const u8 *restrict idata,
 
   for (int y = 0; y < my; ++y) {
     int x = 0;
-    
+
     // the c* values store the context bits for each row. The template is fixed
     // as template 0 with the floating bits in the default locations.
     u16 c1, c2, c3;
-    // the w* values contain works from each of the rows: w1 is from two rows
+    // the w* values contain words from each of the rows: w1 is from two rows
     // up etc. The next bit to roll onto the context values are kept at the top
     // of these words.
     u32 w1, w2, w3;
@@ -488,14 +490,16 @@ jbig2enc_bitimage(struct jbig2enc_ctx *restrict ctx, const u8 *restrict idata,
     if (y >= 1) {
       w2 = data[(y - 1) * words_per_row];
 
-      // it's possible that the last row was the same as this row
-      if (memcmp(&data[y * words_per_row], &data[(y - 1) * words_per_row],
-                 bytes_per_row) == 0) {
-        sltp = ltp ^ 1;
-        ltp = 1;
-      } else {
-        sltp = ltp;
-        ltp = 0;
+      if (duplicate_line_removal) {
+        // it's possible that the last row was the same as this row
+        if (memcmp(&data[y * words_per_row], &data[(y - 1) * words_per_row],
+                   bytes_per_row) == 0) {
+          sltp = ltp ^ 1;
+          ltp = 1;
+        } else {
+          sltp = ltp;
+          ltp = 0;
+        }
       }
     }
     if (duplicate_line_removal) {
@@ -514,7 +518,7 @@ jbig2enc_bitimage(struct jbig2enc_ctx *restrict ctx, const u8 *restrict idata,
     for (x = 0; x < mx; ++x) {
       const u16 tval = (c1 << 11) | (c2 << 4) | c3;
       const u8 v = (w3 & 0x80000000) >> 31;
-      
+
       //fprintf(stderr, "%d %d %d %d\n", x, y, tval, v);
       encode_bit(ctx, context, tval, v);
       c1 <<= 1;
@@ -535,7 +539,7 @@ jbig2enc_bitimage(struct jbig2enc_ctx *restrict ctx, const u8 *restrict idata,
       } else {
         w1 <<= 1;
       }
-      
+
       if (m == 27 && y >= 1) {
         // need to roll in another word from the last line
         const unsigned wordno = (x / 32) + 1;
@@ -559,7 +563,7 @@ jbig2enc_bitimage(struct jbig2enc_ctx *restrict ctx, const u8 *restrict idata,
       } else {
         w3 <<= 1;
       }
-      
+
       c1 &= 31;
       c2 &= 127;
       c3 &= 15;
@@ -567,6 +571,147 @@ jbig2enc_bitimage(struct jbig2enc_ctx *restrict ctx, const u8 *restrict idata,
   }
 }
 
+void
+jbig2enc_refine(struct jbig2enc_ctx *__restrict__ ctx,
+                const uint8_t *__restrict__ itempl, int tx, int ty,
+                const uint8_t *__restrict__ itarget, int mx, int my,
+                int ox, int oy) {
+  const u32 *restrict templdata = (u32 *) itempl;
+  const u32 *restrict data = (u32 *) itarget;
+  u8 *restrict const context = ctx->context;
+
+  static int image_counter = 0;
+
+  image_counter++;
+
+#ifdef SYM_DEBUGGING
+  fprintf(stderr, "refine:%d %d %d %d\n", tx, ty, mx, my);
+#endif
+
+  const unsigned templwords_per_row = (tx + 31) / 32;
+  const unsigned words_per_row = (mx + 31) / 32;
+
+  for (int y = 0; y < my; ++y) {
+    int x;
+    const int temply = y + oy;
+    // the template is fixed to the 13 pixel template with the floating bits in
+    // the default locations.
+    // we have 5 words of context. The first three are the last, current and
+    // next rows of the template. The last two are the last and current rows of
+    // the target.
+    // To form the 14 bits of content these are packed from the least
+    // significant bits rightward.
+    u16 c1, c2, c3, c4, c5;
+    // the w* values contain words from each of the corresponding rows. The
+    // next bit to be part of the context is kept at the top of these words
+    u32 w1, w2, w3, w4, w5;
+    w1 = w2 = w3 = w4 = w5 = 0;
+
+    if (temply >= 1 && (temply - 1) < ty) w1 = templdata[(temply - 1) * templwords_per_row];
+    if (temply >= 0 && temply < ty) w2 = templdata[temply * templwords_per_row];
+    if (temply >= -1 && temply + 1 < ty) w3 = templdata[(temply + 1) * templwords_per_row];
+
+    // the x offset prevents a hassel because we are dealing with bits. Thus we
+    // restrict it to being {-1, 0, 1}.
+    if (y >= 1) w4 = data[(y - 1) * words_per_row];
+    w5 = data[y * words_per_row];
+
+    const int shiftoffset = 30 + ox;
+    c1 = w1 >> shiftoffset;
+    c2 = w2 >> shiftoffset;
+    c3 = w3 >> shiftoffset;
+
+    c4 = w4 >> 30;
+    c5 = 0;
+
+    // the w* should contain the next bit to be included in the context, in the
+    // MSB position. Thus we need to roll the used bits out of the way.
+    const int bits_to_trim = 2 - ox;
+    w1 <<= bits_to_trim;
+    w2 <<= bits_to_trim;
+    w3 <<= bits_to_trim;
+
+    w4 <<= 2;
+
+    for (x = 0; x < mx; ++x) {
+      const u16 tval = (c1 << 10) | (c2 << 7) | (c3 << 4) | (c4 << 1) | c5;
+      const u8 v = w5 >> 31;
+
+#ifdef SYM_DEBUGGING
+      fprintf(stderr, "%d %d %d %d\n", x, y, tval, v);
+#endif
+      encode_bit(ctx, context, tval, v);
+      c1 <<= 1;
+      c2 <<= 1;
+      c3 <<= 1;
+      c4 <<= 1;
+      c1 |= w1 >> 31;
+      c2 |= w2 >> 31;
+      c3 |= w3 >> 31;
+      c4 |= w4 >> 31;
+      c5 = v;
+
+      const int m = x % 32;
+      const unsigned wordno = (x / 32) + 1;
+      if (m == 29 + ox) {
+        // have run out of bits in the w[123] values. Need to get more.
+
+        if (wordno >= templwords_per_row) {
+          w1 = w2 = w3 = 0;
+        } else {
+          if (temply >= 1 && (temply - 1 < ty)) {
+            w1 = templdata[(temply - 1) * templwords_per_row + wordno];
+          } else {
+            w1 = 0;
+          }
+          if (temply >= 0 && temply < ty) {
+            w2 = templdata[temply * templwords_per_row + wordno];
+          } else {
+            w2 = 0;
+          }
+          if (temply >= -1 && (temply + 1) < ty) {
+            w3 = templdata[(temply + 1) * templwords_per_row + wordno];
+          } else {
+            w3 = 0;
+          }
+        }
+      } else {
+        w1 <<= 1;
+        w2 <<= 1;
+        w3 <<= 1;
+      }
+
+      if (m == 29 && y >= 1) {
+        // run out of data from w4
+        if (wordno >= words_per_row) {
+          w4 = 0;
+        } else {
+          w4 = data[(y - 1) * words_per_row + wordno];
+        }
+      } else {
+        w4 <<= 1;
+      }
+
+      if (m == 31) {
+        // run out of data from w5
+        if (wordno >= words_per_row) {
+          w5 = 0;
+        } else {
+          w5 = data[y * words_per_row + wordno];
+        }
+      } else {
+        w5 <<= 1;
+      }
+
+      c1 &= 7;
+      c2 &= 7;
+      c3 &= 7;
+      c4 &= 7;
+    }
+  }
+}
+
+// see comments in .h file
 void
 jbig2enc_image(struct jbig2enc_ctx *restrict ctx, const u8 *restrict data,
                int mx, int my, bool duplicate_line_removal) {

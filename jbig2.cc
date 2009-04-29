@@ -15,9 +15,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <vector>
+
 #include <sys/types.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <fcntl.h>
 
 #include <allheaders.h>
 #include <pix.h>
@@ -26,13 +29,17 @@
 
 static void
 usage(const char *argv0) {
-  fprintf(stderr, "Usage: %s [options] <input filename>\n", argv0);
+  fprintf(stderr, "Usage: %s [options] <input filenames...>\n", argv0);
   fprintf(stderr, "Options:\n");
   fprintf(stderr, "  -d --duplicate-line-removal: use TPGD in generic region coder\n");
   fprintf(stderr, "  -p --pdf: produce PDF ready data\n");
   fprintf(stderr, "  -s --symbol-mode: use text region, not generic coder\n");
   fprintf(stderr, "  -t <threshold>: set classification threshold for symbol coder (def: 0.85)\n");
-  fprintf(stderr, "  -T <bw threshold>: set 1 bpp threshold (def: 188)\n\n");
+  fprintf(stderr, "  -T <bw threshold>: set 1 bpp threshold (def: 188)\n");
+  fprintf(stderr, "  -r --refine: use refinement (requires -s: lossless)\n");
+  fprintf(stderr, "  -O <outfile>: dump thresholded image as PNG\n");
+  fprintf(stderr, "  -2: upsample 2x before thresholding\n");
+  fprintf(stderr, "  -4: upsample 4x before thresholding\n\n");
 }
 
 int
@@ -42,9 +49,12 @@ main(int argc, char **argv) {
   float threshold = 0.85;
   int bw_threshold = 188;
   bool symbol_mode = false;
-  const char *filename = NULL;
+  bool refine = false;
+  bool up2 = false, up4 = false;
+  const char *output_threshold = NULL;
+  int i;
 
-  for (int i = 1; i < argc; ++i) {
+  for (i = 1; i < argc; ++i) {
     if (strcmp(argv[i], "-d") == 0 ||
         strcmp(argv[i], "--duplicate-line-removal") == 0) {
       duplicate_line_removal = true;
@@ -60,6 +70,27 @@ main(int argc, char **argv) {
     if (strcmp(argv[i], "-s") == 0 ||
         strcmp(argv[i], "--symbol-mode") == 0) {
       symbol_mode = true;
+      continue;
+    }
+
+    if (strcmp(argv[i], "-r") == 0 ||
+        strcmp(argv[i], "--refine") == 0) {
+      refine = true;
+      continue;
+    }
+
+    if (strcmp(argv[i], "-2") == 0) {
+      up2 = true;
+      continue;
+    }
+    if (strcmp(argv[i], "-4") == 0) {
+      up4 = true;
+      continue;
+    }
+
+    if (strcmp(argv[i], "-O") == 0) {
+      output_threshold = argv[i+1];
+      i++;
       continue;
     }
 
@@ -96,54 +127,106 @@ main(int argc, char **argv) {
       continue;
     }
 
-    if (filename) {
-      fprintf(stderr, "Unknown arg: %s\n", argv[i]);
-      usage(argv[0]);
-      return 2;
-    }
-
-    filename = argv[i];
+    break;
   }
 
-  if (!filename) {
+  if (i == argc) {
     fprintf(stderr, "No filename given\n\n");
     usage(argv[0]);
     return 4;
   }
 
-  PIX *source = pixRead(filename);
-  if (!source) return 3;
-
-  PIX *pixt;
-  if ((pixt = pixRemoveColormap(source, REMOVE_CMAP_TO_GRAYSCALE)) == NULL) {
-    return 1;
+  if (refine && !symbol_mode) {
+    fprintf(stderr, "Refinement makes not sense unless in symbol mode!\n");
+    fprintf(stderr, "(if you have -r, you must have -s)\n");
+    return 5;
   }
 
-  if (pixt->d > 1) {
-    PIX *gray;
-    if (pixt->d > 8) {
-      gray = pixConvertRGBToGray(pixt, 0.0, 0.0, 0.0);
-      if (!gray) return 1;
-    } else {
-      gray = pixt;
+  if (up2 && up4) {
+    fprintf(stderr, "Can't have both -2 and -4!\n");
+    return 6;
+  }
+
+  struct jbig2ctx *ctx = jbig2_init(threshold, 0.5, 0, 0, !pdfmode, refine ? 10 : -1);
+  const int num_pages = argc - i;
+
+  while (i < argc) {
+    PIX *source = pixReadWithHint(argv[i], L_HINT_GRAY);
+    if (!source) return 3;
+
+    PIX *pixl, *gray, *pixt;
+    if ((pixl = pixRemoveColormap(source, REMOVE_CMAP_TO_GRAYSCALE)) == NULL) {
+      fprintf(stderr, "Failed to remove colormap from %s\n", argv[i]);
+      return 1;
     }
-    pixt = pixThresholdToBinary(gray, bw_threshold);
+    pixDestroy(&source);
+
+    if (pixl->d > 1) {
+      if (pixl->d > 8) {
+        gray = pixConvertRGBToGrayFast(pixl);
+        if (!gray) return 1;
+      } else {
+        gray = pixClone(pixl);
+      }
+      if (up2) {
+        pixt = pixScaleGray2xLIThresh(gray, bw_threshold);
+      } else if (up4) {
+        pixt = pixScaleGray4xLIThresh(gray, bw_threshold);
+      } else {
+        pixt = pixThresholdToBinary(gray, bw_threshold);
+      }
+      pixDestroy(&gray);
+    } else {
+      pixt = pixClone(pixl);
+    }
+    pixDestroy(&pixl);
+
+    if (output_threshold) {
+      pixWrite(output_threshold, pixt, IFF_PNG);
+    }
+
+    if (!symbol_mode) {
+      int length;
+      uint8_t *ret;
+      ret = jbig2_encode_generic(pixt, !pdfmode, 0, 0, duplicate_line_removal,
+                                 &length);
+      write(1, ret, length);
+      return 0;
+    }
+
+    jbig2_add_page(ctx, pixt);
+    i++;
+    pixDestroy(&pixt);
   }
+
   uint8_t *ret;
   int length;
-
-  if (symbol_mode) {
-    ret = jbig2_encode_symbols(pixt, threshold, !pdfmode, 0, 0, &length);
+  ret = jbig2_pages_complete(ctx, &length);
+  if (pdfmode) {
+    const int fd = open("symboltable", O_WRONLY | O_TRUNC | O_CREAT, 0600);
+    if (fd < 0) abort();
+    write(fd, ret, length);
+    close(fd);
   } else {
-    ret = jbig2_encode_generic(pixt, !pdfmode, 0, 0, duplicate_line_removal,
-                               &length);
+    write(1, ret, length);
   }
-
-  if (!ret) {
-    fprintf(stderr, "Error in coding\n");
-    return 12;
-  }
-
-  write(1, ret, length);
   free(ret);
+
+  for (int i = 0; i < num_pages; ++i) {
+    ret = jbig2_produce_page(ctx, i, -1, -1, &length);
+    if (pdfmode) {
+      char *filename;
+      asprintf(&filename, "page-%d", i);
+      const int fd = open(filename, O_WRONLY | O_CREAT | O_TRUNC, 0600);
+      if (fd < 0) abort();
+      write(fd, ret, length);
+      close(fd);
+      free(filename);
+    } else {
+      write(1, ret, length);
+    }
+    free(ret);
+  }
+
+  jbig2_destroy(ctx);
 }
