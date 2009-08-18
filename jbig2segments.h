@@ -86,11 +86,19 @@ struct Segment {
   }
 
   // ---------------------------------------------------------------------------
+  // Return the size of the segment page association field for this segment.
+  // (7.2.6)
+  // ---------------------------------------------------------------------------
+  unsigned page_size() const {
+      return page <= 255 ? 1 : 4;
+  }
+
+  // ---------------------------------------------------------------------------
   // Return the number of bytes that this segment header will take up
   // ---------------------------------------------------------------------------
   unsigned size() const {
     const int refsize = reference_size();
-    const int pagesize = page <= 255 ? 1 : 2;
+    const int pagesize = page_size();
 
     return sizeof(struct jbig2_segment) + refsize * referred_to.size() +
            pagesize + sizeof(u32);
@@ -111,9 +119,9 @@ struct Segment {
 #undef F
     s.segment_count = referred_to.size();
 
-    const int pagesize = page <= 255 ? 1 : 2;
+    const int pagesize = page_size();
     const int refsize = reference_size();
-    if (pagesize == 2) s.page_assoc_size = 1;
+    if (pagesize == 4) s.page_assoc_size = 1;
 
     unsigned j = 0;
 
@@ -134,8 +142,8 @@ struct Segment {
       }
     }
 
-    if (pagesize == 2) {
-      APPEND(u16, htonl(page));
+    if (pagesize == 4) {
+      APPEND(u32, htonl(page));
     } else {
       APPEND(u8, page);
     }
