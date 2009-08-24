@@ -38,6 +38,7 @@ struct jbig2_segment {
 #endif
 }
 #if defined(WIN32)
+;
 #pragma pack()
 #else
 __attribute__((packed));

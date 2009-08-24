@@ -107,7 +107,7 @@ def main(symboltable='symboltable', pagefiles=glob.glob('page-*')):
   doc.add_object(Obj({'Type' : '/Outlines', 'Count': '0'}))
   pages = Obj({'Type' : '/Pages'})
   doc.add_object(pages)
-  symd = doc.add_object(Obj({}, file(symboltable, 'r').read()))
+  symd = doc.add_object(Obj({}, file(symboltable, 'rb').read()))
   page_objs = []
 
   for p in pagefiles:
