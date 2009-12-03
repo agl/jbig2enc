@@ -137,7 +137,7 @@ struct jbig2_symbol_dict {
 
   u32 exsyms;
   u32 newsyms;
-} __attribute__((packed));
+} PACKED;
 
 struct jbig2_text_region {
   u32 width;
@@ -171,15 +171,20 @@ struct jbig2_text_region {
 #endif
 
   // huffman flags omitted
-} __attribute__((packed));
+} PACKED;
+
 
 struct jbig2_text_region_atflags {
   signed char a1x, a1y, a2x, a2y;
-} __attribute__((packed));
+} PACKED;
 
 struct jbig2_text_region_syminsts {
   u32 sbnuminstances;
   // huffman decoding table omitted
-} __attribute__((packed));
+} PACKED;
+
+#if defined(WIN32)
+#pragma pack()
+#endif
 
 #endif  // JBIG2ENC_JBIG2STRUCTS_H__

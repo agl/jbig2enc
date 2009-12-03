@@ -14,7 +14,7 @@ better compression than G4. This encoder can:
 It uses the (Apache-ish licensed) Leptonica library:
   http://www.leptonica.com/
 
-You'll need version 1.58 - which is included with the distribution tarball.
+You'll need version 1.63 - which is included with the distribution tarball.
 
 KNOWN BUGS:
 
