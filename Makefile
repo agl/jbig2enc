@@ -17,8 +17,5 @@ jbig2arith.o: jbig2arith.cc jbig2arith.h
 jbig2sym.o: jbig2sym.cc jbig2arith.h
 	$(CC) -c jbig2sym.cc -DUSE_EXT $(CFLAGS)
 
-delta: delta.c
-	$(CC) -o delta delta.c $(CFLAGS) ${LEPTONICA}/src/liblept.a -lpng -ljpeg -ltiff -lm
-
 clean:
 	rm -f *.o jbig2 libjbig2enc.a

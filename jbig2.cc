@@ -348,7 +348,8 @@ main(int argc, char **argv) {
         fprintf(stderr, "Unable to open \"%s\"", argv[i]);
         return 1;
       }
-      int filetype = findFileFormat(fp);
+      l_int32 filetype;
+      findFileFormat(fp, &filetype);
       if (filetype==IFF_TIFF && tiffGetCount(fp, &numsubimages)) {
         return 1;
       }
