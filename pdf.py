@@ -142,9 +142,12 @@ def usage(script, msg):
     sys.stderr.write("%s: %s\n"% (script, msg))
   sys.stderr.write("Usage: %s [file_basename] > out.pdf\n"% script)
   sys.exit(1)
-  
-  
+
+
 if __name__ == '__main__':
+  if sys.platform == "win32":
+    import msvcrt
+    msvcrt.setmode(sys.stdout.fileno(), os.O_BINARY)
 
   if len(sys.argv) == 2:
     sym = sys.argv[1] + '.sym'
