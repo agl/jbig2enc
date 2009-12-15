@@ -1,3 +1,5 @@
+#!/usr/bin/python
+
 import sys
 import re
 import struct
@@ -156,11 +158,11 @@ if __name__ == '__main__':
     sym = 'symboltable'
     pages = glob.glob('page-*')
   else:
-    usage(sys.argv[0])
+    usage(sys.argv[0], "wrong number of args!")
 
   if not os.path.exists(sym):
-    usage("symbol table %s not found!"% sym)
+    usage(sys.argv[0], "symbol table %s not found!"% sym)
   elif len(pages) == 0:
-    usage("no pages found!")
-  
+    usage(sys.argv[0], "no pages found!")
+
   main(sym, pages)
