@@ -112,6 +112,7 @@ def main(symboltable='symboltable', pagefiles=glob.glob('page-*')):
   symd = doc.add_object(Obj({}, file(symboltable, 'rb').read()))
   page_objs = []
 
+  pagefiles.sort()
   for p in pagefiles:
     try:
       contents = file(p).read()
