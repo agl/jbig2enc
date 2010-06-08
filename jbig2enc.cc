@@ -96,6 +96,7 @@ struct jbig2ctx {
   std::map<int, std::vector<unsigned> > single_use_symbols;
   // the number of symbols in the global symbol table
   int num_global_symbols;
+  std::vector<int> page_xres, page_yres;
   std::vector<int> page_width, page_height;
   // Used to store the mapping from symbol number to the index in the global
   // symbol dictionary.
@@ -155,6 +156,8 @@ jbig2_add_page(struct jbig2ctx *ctx, struct Pix *input) {
   jbAddPage(ctx->classer, bw);
   ctx->page_width.push_back(bw->w);
   ctx->page_height.push_back(bw->h);
+  ctx->page_xres.push_back(bw->xres);
+  ctx->page_yres.push_back(bw->yres);
 
   if (ctx->refinement) {
     // This code is broken by (my) recent changes to Leptonica. Needs to be
@@ -391,8 +394,8 @@ jbig2_produce_page(struct jbig2ctx *ctx, int page_no,
   seg.len = sizeof(struct jbig2_page_info);
   pageinfo.width = htonl(ctx->page_width[page_no]);
   pageinfo.height = htonl(ctx->page_height[page_no]);
-  pageinfo.xres = htonl(xres == -1 ? ctx->xres : xres);
-  pageinfo.yres = htonl(yres == -1 ? ctx->yres : yres);
+  pageinfo.xres = htonl(xres == -1 ? ctx->page_xres[page_no] : xres );
+  pageinfo.yres = htonl(yres == -1 ? ctx->page_yres[page_no] : yres );
   pageinfo.is_lossless = ctx->refinement;
 
   std::map<int, int> second_symbol_map;
