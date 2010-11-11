@@ -11,6 +11,8 @@ import os
 # Run ./jbig2 -s -p <other options> image1.jpeg image1.jpeg ...
 # python pdf.py output > out.pdf
 
+dpi = 600
+
 class Ref:
   def __init__(self, x):
     self.x = x
@@ -124,11 +126,11 @@ def main(symboltable='symboltable', pagefiles=glob.glob('page-*')):
         str(width), 'Height': str(height), 'ColorSpace': '/DeviceGray',
         'BitsPerComponent': '1', 'Filter': '/JBIG2Decode', 'DecodeParms':
         ' << /JBIG2Globals %d 0 R >>' % symd.id}, contents)
-    contents = Obj({}, 'q %d 0 0 %d 0 0 cm /Im1 Do Q' % (width, height))
+    contents = Obj({}, 'q %f 0 0 %f 0 0 cm /Im1 Do Q' % (float(width * 72) / dpi, float(height * 72) / dpi))
     resources = Obj({'ProcSet': '[/PDF /ImageB]',
         'XObject': '<< /Im1 %d 0 R >>' % xobj.id})
     page = Obj({'Type': '/Page', 'Parent': '3 0 R',
-        'MediaBox': '[ 0 0 %d %d ]' % (width, height),
+        'MediaBox': '[ 0 0 %f %f ]' % (float(width * 72) / dpi, float(height * 72) / dpi),
         'Contents': ref(contents.id),
         'Resources': ref(resources.id)})
     [doc.add_object(x) for x in [xobj, contents, resources, page]]
