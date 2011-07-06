@@ -1,5 +1,5 @@
 CC=g++
-LEPTONICA=../leptonlib-1.67
+LEPTONICA=../leptonica-1.68
 # For example, a fink MacOSX install:
 # EXTRA=-I/sw/include/ -I/sw/include/libpng -I/sw/include/libjpeg -L/sw/lib
 CFLAGS=-I${LEPTONICA}/src -Wall -I/usr/include -L/usr/lib -O3 ${EXTRA}

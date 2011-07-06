@@ -349,7 +349,7 @@ main(int argc, char **argv) {
         return 1;
       }
       l_int32 filetype;
-      findFileFormat(fp, &filetype);
+      findFileFormatStream(fp, &filetype);
       if (filetype==IFF_TIFF && tiffGetCount(fp, &numsubimages)) {
         return 1;
       }
