@@ -14,7 +14,7 @@ better compression than G4. This encoder can:
 It uses the (Apache-ish licensed) Leptonica library:
   http://www.leptonica.com/
 
-You'll need version 1.67 - which is included with the distribution tarball.
+You'll need version 1.68 - which is included with the distribution tarball.
 
 KNOWN BUGS:
 
@@ -28,7 +28,7 @@ First, read the file PATENTS in the same directory as this file.
 Fetch leptonica from its website and build it. For this you will also
 need the standard libtiff, libpng and libjpeg.
 
-If leptonica was unpacked in ../leptonlib-1.67/ you should just be able to type
+If leptonica was unpacked in ../leptonlib-1.68/ you should just be able to type
 make. Otherwise, fix up the path at the beginning of the Makefile first.
 
 USAGE:
