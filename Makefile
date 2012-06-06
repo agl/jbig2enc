@@ -5,7 +5,7 @@ LEPTONICA=../leptonica-1.68
 CFLAGS=-I${LEPTONICA}/src -Wall -I/usr/include -L/usr/lib -O3 ${EXTRA}
 
 jbig2: libjbig2enc.a jbig2.cc
-	$(CC) -o jbig2 jbig2.cc -L. -ljbig2enc ${LEPTONICA}/src/.libs/liblept.a $(CFLAGS) -lpng -ljpeg -ltiff -lm -lz
+	$(CC) -o jbig2 jbig2.cc -L. -ljbig2enc ${LEPTONICA}/src/.libs/liblept.a $(CFLAGS) -lpng -ljpeg -ltiff -lm -lz -lwebp -lgif
 
 libjbig2enc.a: jbig2enc.o jbig2arith.o jbig2sym.o
 	ar -rcv libjbig2enc.a jbig2enc.o jbig2arith.o jbig2sym.o
