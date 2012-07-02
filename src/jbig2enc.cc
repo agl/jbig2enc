@@ -22,8 +22,7 @@
 #include <stdio.h>
 #include <string.h>
 
-#include <allheaders.h>
-#include <pix.h>
+#include <leptonica/allheaders.h>
 
 #include <math.h>
 #if defined(sun)

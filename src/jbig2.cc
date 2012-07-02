@@ -24,8 +24,7 @@
 #include <string.h>
 #include <unistd.h>
 
-#include <allheaders.h>
-#include <pix.h>
+#include <leptonica/allheaders.h>
 
 #include "jbig2enc.h"
 
@@ -68,7 +67,7 @@ pixInfo(PIX *pix, const char *msg) {
           pix->w, pix->h, pix->d, pix->xres, pix->yres, pix->refcount);
 }
 
-#ifdef _MSC_VER
+#ifdef WIN32
 // -----------------------------------------------------------------------------
 // Windows, sadly, lacks asprintf
 // -----------------------------------------------------------------------------

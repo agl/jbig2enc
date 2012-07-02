@@ -1,0 +1,12 @@
+First, read the file PATENTS in the same directory as this file.
+
+Fetch leptonica from its website (http://leptonica.com/) and build it.
+For this you will also need the standard libtiff, libpng and libjpeg.
+
+If you're running a Unix-like OS, such as Linux, BSD, Mac OS X or msys
+ just run:
+
+./autogen.sh
+./configure
+make
+make install (or sudo make install)

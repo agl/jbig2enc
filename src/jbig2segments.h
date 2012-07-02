@@ -19,7 +19,7 @@
 #define THIRD_PARTY_JBIG2ENC_JBIG2SEGMENTS_H__
 
 #include <vector>
-#ifdef _MSC_VER
+#ifdef WIN32
 #include <winsock2.h>
 #else
 #include <netinet/in.h>
