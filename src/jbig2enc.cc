@@ -42,6 +42,13 @@
 #include "jbig2segments.h"
 
 // -----------------------------------------------------------------------------
+// Returns the version identifier as a static string.
+// -----------------------------------------------------------------------------
+char const *getVersion() {
+  return VERSION;
+}
+
+// -----------------------------------------------------------------------------
 // Removes spots which are less than size x size pixels
 //
 // Note, this has a side-effect of removing a few pixels

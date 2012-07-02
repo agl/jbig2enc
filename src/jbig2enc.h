@@ -40,6 +40,11 @@
 #include <stdint.h>
 #endif
 
+// -----------------------------------------------------------------------------
+// Returns the version identifier as a static string.
+// -------------------------------------------------------------------------
+char const *getVersion();
+
 struct Pix;
 // This is the (opaque) structure which handles multi-page compression.
 struct jbig2ctx;

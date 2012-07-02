@@ -26,6 +26,11 @@
 #
 # All the rest is auto-generated.
 
+# create m4 directory if it not exists
+if [ ! -d m4 ];  then
+	mkdir m4
+fi
+
 bail_out()
 {
 	echo 
@@ -39,19 +44,20 @@ bail_out()
 echo "Running aclocal"
 aclocal || bail_out
 
+# --- Step 2:
 
 echo "Running libtoolize"
 libtoolize -f -c || glibtoolize -f -c || bail_out
 libtoolize --automake || glibtoolize --automake || bail_out
 
-# --- Step 2: Generate Makefile.in, 
+# --- Step 3: Generate Makefile.in, 
 # Using --add-missing --copy makes sure that, if these files are missing,
 # they are copied from the system so they can be used in a distribution.
 
 echo "Running automake --add-missing --copy"
 automake --add-missing -c > /dev/null || bail_out
 
-# --- Step 3: Generate configure from:
+# --- Step 4: Generate configure from:
 #             . configure.ac
 #
 

@@ -54,6 +54,7 @@ usage(const char *argv0) {
   fprintf(stderr, "  -4: upsample 4x before thresholding\n");
   fprintf(stderr, "  -S: remove images from mixed input and save separately\n");
   fprintf(stderr, "  -j --jpeg-output: write images from mixed input as JPEG\n");
+  fprintf(stderr, "  -V --version: version info\n");
   fprintf(stderr, "  -v: be verbose\n");
 }
 
@@ -222,6 +223,12 @@ main(int argc, char **argv) {
       usage(argv[0]);
       return 0;
       continue;
+    }
+
+    if (strcmp(argv[i], "-V") == 0 ||
+        strcmp(argv[i], "--version") == 0) {
+      fprintf(stderr, "jbig2enc %s\n", getVersion());
+      return 0;
     }
 
     if (strcmp(argv[i], "-b") == 0 ||
