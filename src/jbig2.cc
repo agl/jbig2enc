@@ -22,7 +22,11 @@
 #include <stdlib.h>
 #include <fcntl.h>
 #include <string.h>
+#ifdef _MSC_VER
+#include <io.h>
+#else
 #include <unistd.h>
+#endif
 
 #include <leptonica/allheaders.h>
 
@@ -206,6 +210,12 @@ main(int argc, char **argv) {
   bool segment = false;
   int i;
 
+  #ifdef WIN32
+    int result = _setmode(_fileno(stdout), _O_BINARY);
+    if (result == -1)
+      fprintf(stderr, "Cannot set mode to binary for stdout\n");
+  #endif
+
   for (i = 1; i < argc; ++i) {
     if (strcmp(argv[i], "-h") == 0 ||
         strcmp(argv[i], "--help") == 0) {
@@ -343,8 +353,9 @@ main(int argc, char **argv) {
     if (subimage==numsubimages) {
       subimage = numsubimages = 0;
       FILE *fp;
+      if (verbose) fprintf(stderr, "Processing \"%s\"...\n", argv[i]);
       if ((fp=fopen(argv[i], "r"))==NULL) {
-        fprintf(stderr, "Unable to open \"%s\"", argv[i]);
+        fprintf(stderr, "Unable to open \"%s\"\n", argv[i]);
         return 1;
       }
       l_int32 filetype;

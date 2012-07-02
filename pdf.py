@@ -117,7 +117,7 @@ def main(symboltable='symboltable', pagefiles=glob.glob('page-*')):
   pagefiles.sort()
   for p in pagefiles:
     try:
-      contents = file(p).read()
+      contents = file(p, mode='rb').read()
     except IOError:
       sys.stderr.write("error reading page file %s\n"% p)
       continue

@@ -1,7 +1,8 @@
 0.28: (not yet released)
   * Update to the latest Leptonica (1.68)
   * pdf.py now correctly retains DPI from input images (thanks to RubyPDF)
-  * autotools support
+  * autotools support, VC++ 2008 solution
+  * fix binary file open mode on Windows
 
 0.27:
   * Update to the latest Leptonica (1.58)
