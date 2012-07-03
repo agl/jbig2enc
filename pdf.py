@@ -1,4 +1,21 @@
 #!/usr/bin/python
+# Copyright 2006 Google Inc.
+# Author: agl@imperialviolet.org (Adam Langley)
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# JBIG2 Encoder
+# https://github.com/agl/jbig2enc
 
 import sys
 import re
@@ -11,7 +28,7 @@ import os
 # Run ./jbig2 -s -p <other options> image1.jpeg image1.jpeg ...
 # python pdf.py output > out.pdf
 
-dpi = 600
+dpi = 72
 
 class Ref:
   def __init__(self, x):
@@ -117,20 +134,26 @@ def main(symboltable='symboltable', pagefiles=glob.glob('page-*')):
   pagefiles.sort()
   for p in pagefiles:
     try:
-      contents = file(p).read()
+      contents = file(p, mode='rb').read()
     except IOError:
       sys.stderr.write("error reading page file %s\n"% p)
       continue
-    (width, height) = struct.unpack('>II', contents[11:19])
+    (width, height, xres, yres) = struct.unpack('>IIII', contents[11:27])
+
+    if xres == 0:
+        xres = dpi
+    if yres == 0:
+        yres = dpi
+
     xobj = Obj({'Type': '/XObject', 'Subtype': '/Image', 'Width':
         str(width), 'Height': str(height), 'ColorSpace': '/DeviceGray',
         'BitsPerComponent': '1', 'Filter': '/JBIG2Decode', 'DecodeParms':
         ' << /JBIG2Globals %d 0 R >>' % symd.id}, contents)
-    contents = Obj({}, 'q %f 0 0 %f 0 0 cm /Im1 Do Q' % (float(width * 72) / dpi, float(height * 72) / dpi))
+    contents = Obj({}, 'q %f 0 0 %f 0 0 cm /Im1 Do Q' % (float(width * 72) / xres, float(height * 72) / yres))
     resources = Obj({'ProcSet': '[/PDF /ImageB]',
         'XObject': '<< /Im1 %d 0 R >>' % xobj.id})
     page = Obj({'Type': '/Page', 'Parent': '3 0 R',
-        'MediaBox': '[ 0 0 %f %f ]' % (float(width * 72) / dpi, float(height * 72) / dpi),
+        'MediaBox': '[ 0 0 %f %f ]' % (float(width * 72) / xres, float(height * 72) / yres),
         'Contents': ref(contents.id),
         'Resources': ref(resources.id)})
     [doc.add_object(x) for x in [xobj, contents, resources, page]]

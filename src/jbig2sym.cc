@@ -28,8 +28,7 @@
 
 #include <stdio.h>
 
-#include <allheaders.h>
-#include <pix.h>
+#include <leptonica/allheaders.h>
 
 #include <math.h>
 

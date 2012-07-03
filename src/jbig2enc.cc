@@ -22,8 +22,7 @@
 #include <stdio.h>
 #include <string.h>
 
-#include <allheaders.h>
-#include <pix.h>
+#include <leptonica/allheaders.h>
 
 #include <math.h>
 #if defined(sun)
@@ -41,6 +40,13 @@
 #include "jbig2sym.h"
 #include "jbig2structs.h"
 #include "jbig2segments.h"
+
+// -----------------------------------------------------------------------------
+// Returns the version identifier as a static string.
+// -----------------------------------------------------------------------------
+char const *getVersion() {
+  return VERSION;
+}
 
 // -----------------------------------------------------------------------------
 // Removes spots which are less than size x size pixels

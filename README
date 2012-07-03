@@ -12,62 +12,28 @@ better compression than G4. This encoder can:
    * Compress multipage documents
 
 It uses the (Apache-ish licensed) Leptonica library:
-  http://www.leptonica.com/
+  http://leptonica.com/
 
-You'll need version 1.68 - which is included with the distribution tarball.
+You'll need version 1.68.
 
 KNOWN BUGS:
 
 The refinement coding causes Acrobat to crash. It's not known if this is a bug
 in Acrobat, though it may well be.
 
-BUILDING:
-
-First, read the file PATENTS in the same directory as this file.
-
-Fetch leptonica from its website and build it. For this you will also
-need the standard libtiff, libpng and libjpeg.
-
-If leptonica was unpacked in ../leptonlib-1.68/ you should just be able to type
-make. Otherwise, fix up the path at the beginning of the Makefile first.
 
 USAGE:
 
 See the jbig2enc.h header for the high level API, or the jbig2 program for an
-example of usage. It's very short and most of it is taken up with argument
-parsing.
+example of usage:
 
-CHANGES:
+$ jbig2 -s -p -v *.jpg && pdf.py output >out.pdf
 
-0.27:
-  * Update to the latest Leptonica (1.58)
-  * Fix comments in pdf.py (thanks Dan)
+to encode jbig2 files for pdf creation.
+If you want to encode an image and then view output first to include in pdf
 
-0.26:
-  * Update to the latest Leptonica (1.53)
+$ jbig2 -s -S -p -v -O out.png *.jpg
 
-0.25:
-   * Should build on Windows if you get a leptonica which does so (thanks to
-     Dwight Kelly and a man known only as Dennis)
+If you want to encode an image as jbig2 (can be view in STDU Viewer) run:
 
-0.24:
-   * Update to leptonica 1.38
-   * Add ability to gray symbols but it's commented out because it does little
-     good
-   * Refinement support broke because of memory savings in leptonica
-
-0.23:
-   * Quick release to support leptonica 1.37 (now bundled)
-
-0.22:
-   * Added segmentation support to extract text from mixed images
-   * Flyspeck removal disabled for now
-   * A few minor fixes
-
-0.21:
-   * Patch from Alberto Accomazzi to fix the pdf.py script and to output more
-     sensible filenames in pdf mode
-   * Symbols which are only used once are now included in a per-page dictionary
-     (great for scans of old books)
-   * Fixed several scale bugs (one at 65K symbols and one at 100K symbols)
-   * Page numbers > 256 went wrong
+$ jbig2 -s feyn.tif >feyn.jb2

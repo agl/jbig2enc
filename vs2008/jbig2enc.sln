@@ -1,0 +1,29 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 10.00
+# Visual C++ Express 2008
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "jbig2", "jbig2\jbig2.vcproj", "{3898E38A-63BE-4D73-828C-8AD70AF8B321}"
+	ProjectSection(ProjectDependencies) = postProject
+		{6091B063-4892-490F-8538-91475A5DF370} = {6091B063-4892-490F-8538-91475A5DF370}
+	EndProjectSection
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "libjbig2enc", "libjbig2enc\libjbig2enc.vcproj", "{6091B063-4892-490F-8538-91475A5DF370}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Win32 = Debug|Win32
+		Release|Win32 = Release|Win32
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{3898E38A-63BE-4D73-828C-8AD70AF8B321}.Debug|Win32.ActiveCfg = Debug|Win32
+		{3898E38A-63BE-4D73-828C-8AD70AF8B321}.Debug|Win32.Build.0 = Debug|Win32
+		{3898E38A-63BE-4D73-828C-8AD70AF8B321}.Release|Win32.ActiveCfg = Release|Win32
+		{3898E38A-63BE-4D73-828C-8AD70AF8B321}.Release|Win32.Build.0 = Release|Win32
+		{6091B063-4892-490F-8538-91475A5DF370}.Debug|Win32.ActiveCfg = Debug|Win32
+		{6091B063-4892-490F-8538-91475A5DF370}.Debug|Win32.Build.0 = Debug|Win32
+		{6091B063-4892-490F-8538-91475A5DF370}.Release|Win32.ActiveCfg = Release|Win32
+		{6091B063-4892-490F-8538-91475A5DF370}.Release|Win32.Build.0 = Release|Win32
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal
