@@ -22,10 +22,13 @@
 #include <stdlib.h>
 #include <fcntl.h>
 #include <string.h>
+#ifdef _MSC_VER
+#include <io.h>
+#else
 #include <unistd.h>
+#endif
 
-#include <allheaders.h>
-#include <pix.h>
+#include <leptonica/allheaders.h>
 
 #include "jbig2enc.h"
 
@@ -51,6 +54,7 @@ usage(const char *argv0) {
   fprintf(stderr, "  -4: upsample 4x before thresholding\n");
   fprintf(stderr, "  -S: remove images from mixed input and save separately\n");
   fprintf(stderr, "  -j --jpeg-output: write images from mixed input as JPEG\n");
+  fprintf(stderr, "  -V --version: version info\n");
   fprintf(stderr, "  -v: be verbose\n");
 }
 
@@ -68,7 +72,7 @@ pixInfo(PIX *pix, const char *msg) {
           pix->w, pix->h, pix->d, pix->xres, pix->yres, pix->refcount);
 }
 
-#ifdef _MSC_VER
+#ifdef WIN32
 // -----------------------------------------------------------------------------
 // Windows, sadly, lacks asprintf
 // -----------------------------------------------------------------------------
@@ -207,12 +211,24 @@ main(int argc, char **argv) {
   bool segment = false;
   int i;
 
+  #ifdef WIN32
+    int result = _setmode(_fileno(stdout), _O_BINARY);
+    if (result == -1)
+      fprintf(stderr, "Cannot set mode to binary for stdout\n");
+  #endif
+
   for (i = 1; i < argc; ++i) {
     if (strcmp(argv[i], "-h") == 0 ||
         strcmp(argv[i], "--help") == 0) {
       usage(argv[0]);
       return 0;
       continue;
+    }
+
+    if (strcmp(argv[i], "-V") == 0 ||
+        strcmp(argv[i], "--version") == 0) {
+      fprintf(stderr, "jbig2enc %s\n", getVersion());
+      return 0;
     }
 
     if (strcmp(argv[i], "-b") == 0 ||
@@ -344,8 +360,9 @@ main(int argc, char **argv) {
     if (subimage==numsubimages) {
       subimage = numsubimages = 0;
       FILE *fp;
+      if (verbose) fprintf(stderr, "Processing \"%s\"...\n", argv[i]);
       if ((fp=fopen(argv[i], "r"))==NULL) {
-        fprintf(stderr, "Unable to open \"%s\"", argv[i]);
+        fprintf(stderr, "Unable to open \"%s\"\n", argv[i]);
         return 1;
       }
       l_int32 filetype;
