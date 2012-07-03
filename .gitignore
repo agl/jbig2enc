@@ -2,6 +2,12 @@ autom4te*
 test*
 *.o
 *.a
+*.lo
+*.la
+Makefile
+/libtool
+/src/.libs
+/src/jbig2
 Debug*
 Release*
 *.suo
