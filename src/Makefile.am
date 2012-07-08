@@ -7,7 +7,7 @@ include_HEADERS = jbig2arith.h jbig2sym.h jbig2structs.h jbig2segments.h
 bin_PROGRAMS = jbig2
 jbig2_SOURCES = jbig2.cc
 jbig2_LDADD = libjbig2enc.la 
-jbig2_LDFLAGS = -all-static
+jbig2_LDFLAGS = -static
 
 if MINGW
 jbig2_LDADD += -lws2_32
