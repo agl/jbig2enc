@@ -1,6 +1,6 @@
 AC_PREREQ(2.50)
 AC_INIT([jbig2enc], [0.28], [agl@imperialviolet.org], [jbig2enc-0.28],
-       [https://github.com/agl/jbig2enc])
+		[https://github.com/agl/jbig2enc])
 AC_CONFIG_MACRO_DIR([m4])
 AM_INIT_AUTOMAKE([-Wall -Werror foreign no-dependencies])
 AC_PROG_CXX
@@ -39,39 +39,41 @@ AM_CONDITIONAL(MINGW, false)
 #############################
 AC_CANONICAL_HOST
 case $host_os in
-    mingw32*)
-        AC_DEFINE_UNQUOTED(MINGW,1,[This is a MinGW system])
-        AM_CONDITIONAL(MINGW, true)
-        ;;
-     *)
-        # default
-        ;;
+	mingw*)
+		AC_DEFINE_UNQUOTED(MINGW,1,[This is a MinGW system])
+		AC_CHECK_LIB(ws2_32, _head_libws2_32_a,,
+			echo "Error! zlib not detected."
+			exit -1)
+		LIBS="$LIBS -lws2_32"
+		;;
+	 *)
+		# default
+		;;
 esac 
 
 AC_CHECK_LIB([lept], [findFileFormatStream], [], [
-              echo "Error! Leptonica not detected."
-              exit -1
-              ])
-AC_CHECK_LIB([tiff], [TIFFGetVersion], [], [
-              echo "Error! libtiff not detected."
-              exit -1
-              ])
-AC_CHECK_LIB([jpeg], [jpeg_set_defaults], [], [
-              echo "Error! libjpeg not detected."
-              exit -1
-              ])
-AC_CHECK_LIB([png], [png_get_io_ptr], [], [
-              echo "Error! libpng not detected."
-              exit -1
-              ])
+			echo "Error! Leptonica not detected."
+			exit -1
+			])
+# test for function - it should detect leptonica dependecies
+
+# Check for possible dependancies of leptonica.
+# Because at the moment there is no way how to identify used libraries
+# all presented libraries will be used...
+AC_CHECK_LIB([tiff], TIFFOpen )
+AC_CHECK_LIB([png], png_read_png )
+AC_CHECK_LIB([jpeg], jpeg_read_scanlines )
+AC_CHECK_LIB([gif], DGifOpenFileHandle )
+AC_CHECK_LIB([webp], WebPGetInfo )
 AC_CHECK_LIB([z], [zlibVersion], [], [
-              echo "Error! zlib not detected."
-              exit -1
-              ])
+			echo "Error! zlib not detected."
+			exit -1
+			])
 AC_CHECK_LIB([m], [sqrt], [], [
-              echo "Error! libm not detected."
-              exit -1
-              ])
+			echo "Error! libm not detected."
+			exit -1
+			])
+
 AC_CONFIG_FILES([
 	Makefile
 	src/Makefile
