@@ -217,6 +217,7 @@ main(int argc, char **argv) {
       fprintf(stderr, "Cannot set mode to binary for stdout\n");
   #endif
 
+
   for (i = 1; i < argc; ++i) {
     if (strcmp(argv[i], "-h") == 0 ||
         strcmp(argv[i], "--help") == 0) {
@@ -361,7 +362,7 @@ main(int argc, char **argv) {
       subimage = numsubimages = 0;
       FILE *fp;
       if (verbose) fprintf(stderr, "Processing \"%s\"...\n", argv[i]);
-      if ((fp=fopen(argv[i], "r"))==NULL) {
+      if ((fp=lept_fopen(argv[i], "r"))==NULL) {
         fprintf(stderr, "Unable to open \"%s\"\n", argv[i]);
         return 1;
       }
@@ -370,7 +371,7 @@ main(int argc, char **argv) {
       if (filetype==IFF_TIFF && tiffGetCount(fp, &numsubimages)) {
         return 1;
       }
-      fclose(fp);
+      lept_fclose(fp);
     }
 
     PIX *source;
