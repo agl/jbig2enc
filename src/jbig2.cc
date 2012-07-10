@@ -54,6 +54,8 @@ usage(const char *argv0) {
   fprintf(stderr, "  -4: upsample 4x before thresholding\n");
   fprintf(stderr, "  -S: remove images from mixed input and save separately\n");
   fprintf(stderr, "  -j --jpeg-output: write images from mixed input as JPEG\n");
+  fprintf(stderr, "  -a --autoThresh: engage using autoThresholding for symbol coder\n");
+  fprintf(stderr, "  --nohash: only for debugging purposes to allow easily compare performance with older version\n");
   fprintf(stderr, "  -V --version: version info\n");
   fprintf(stderr, "  -v: be verbose\n");
 }
@@ -209,6 +211,8 @@ main(int argc, char **argv) {
   l_int32 img_fmt = IFF_PNG;
   const char *img_ext = "png";
   bool segment = false;
+  bool autoThresh = false;
+  bool hash = true;
   int i;
 
   #ifdef WIN32
@@ -327,6 +331,18 @@ main(int argc, char **argv) {
       continue;
     }
 
+    // engage auto thresholding
+    if (strcmp(argv[i], "--autoThresh") == 0 || 
+        strcmp(argv[i], "-a") == 0 ) {
+      autoThresh = true;
+      continue;
+    }
+
+    if (strcmp(argv[i], "--nohash") == 0) {
+      hash = false;
+      continue;
+    }
+
     if (strcmp(argv[i], "-v") == 0) {
       verbose = true;
       continue;
@@ -340,7 +356,7 @@ main(int argc, char **argv) {
     usage(argv[0]);
     return 4;
   }
-
+ 
   if (refine && !symbol_mode) {
     fprintf(stderr, "Refinement makes not sense unless in symbol mode!\n");
     fprintf(stderr, "(if you have -r, you must have -s)\n");
@@ -361,7 +377,7 @@ main(int argc, char **argv) {
       subimage = numsubimages = 0;
       FILE *fp;
       if (verbose) fprintf(stderr, "Processing \"%s\"...\n", argv[i]);
-      if ((fp=fopen(argv[i], "r"))==NULL) {
+      if ((fp=lept_fopen(argv[i], "r"))==NULL) {
         fprintf(stderr, "Unable to open \"%s\"\n", argv[i]);
         return 1;
       }
@@ -370,7 +386,7 @@ main(int argc, char **argv) {
       if (filetype==IFF_TIFF && tiffGetCount(fp, &numsubimages)) {
         return 1;
       }
-      fclose(fp);
+      lept_fclose(fp);
     }
 
     PIX *source;
@@ -452,6 +468,14 @@ main(int argc, char **argv) {
     num_pages++;
     if (subimage==numsubimages) {
       i++;
+    }
+  }
+
+    if (autoThresh) {
+    if (hash) {
+      autoThresholdUsingHash(ctx);
+    } else {
+      autoThreshold(ctx);
     }
   }
 

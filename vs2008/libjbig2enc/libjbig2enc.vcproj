@@ -161,6 +161,12 @@
 			<File
 				RelativePath="..\..\src\jbig2sym.cc"
 				>
+			</File>			<File
+				RelativePath="..\..\src\jbig2comparator.cc"
+				>
+			</File>			<File
+				RelativePath="..\..\src\result.cc"
+				>
 			</File>
 		</Filter>
 		<Filter
@@ -186,6 +192,14 @@
 			</File>
 			<File
 				RelativePath="..\..\src\jbig2sym.h"
+				>
+			</File>
+			<File
+				RelativePath="..\..\src\jbig2comparator.h"
+				>
+			</File>
+			<File
+				RelativePath="..\..\src\result.h"
 				>
 			</File>
 		</Filter>
