@@ -1,9 +1,9 @@
 AM_CXXFLAGS = -Wall
 
 lib_LTLIBRARIES = libjbig2enc.la
-libjbig2enc_la_SOURCES = jbig2enc.cc jbig2arith.cc jbig2sym.cc result.cc jbig2comparator.cc
+libjbig2enc_la_SOURCES = jbig2enc.cc jbig2arith.cc jbig2sym.cc jbig2comparator.cc
 libjbig2enc_la_LDFLAGS = -no-undefined -version-info $(GENERIC_LIBRARY_VERSION)
-include_HEADERS = jbig2arith.h jbig2sym.h jbig2structs.h jbig2segments.h result.h jbig2comparator.h
+include_HEADERS = jbig2arith.h jbig2sym.h jbig2structs.h jbig2segments.h jbig2comparator.h
 
 bin_PROGRAMS = jbig2
 jbig2_SOURCES = jbig2.cc

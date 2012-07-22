@@ -144,16 +144,15 @@ jbig2_encode_generic(struct Pix *const bw, const bool full_headers,
 // if they are the same it calls method that makes from them only one template
 // and all indexes from second template are reindexed to the first one
 //
-// requires implementation of functions 
-//      uniteTemplates(struct jbig2ctx *ctx, int firstTemplate, int secondTemplate) 
-//      areEquivalent(PIX *const firstTemplate, PIX *const secondTemplate)
+// requires implementation of functions uniteTemplates(struct jbig2ctx *ctx, int firstTemplate, int secondTemplate)
+// are_equivalent(PIX *const firstTemplate, PIX *const secondTemplate)
 // -------------------------------------------------------------------------------
-void autoThreshold(struct jbig2ctx *ctx);
+void auto_threshold(struct jbig2ctx *ctx);
 
 // -------------------------------------------------------------------------------
 // The same as autoThreshold, but it adds hash function in order to prevent
 // unnecessary comparision and thus improve speed performance
 // -------------------------------------------------------------------------------
-void autoThresholdUsingHash(struct jbig2ctx *ctx);
+void auto_threshold_using_hash(struct jbig2ctx *ctx);
 
 #endif  // JBIG2ENC_JBIG2_H__

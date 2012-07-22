@@ -45,17 +45,19 @@
 struct Pix;
 
 /**
- * compare two pix and tell if they are equivalent by trying to decide 
- * if these symbols look the same for user or not
- * it works by finding acumulations of differences between these two templates
- * if the difference is bigger than concrete percentage of one of templates than these templates 
- * if such difference doesn't exist than they are equivalent
+ * Compares two pix and tell if they are equivalent by trying to decide if these symbols are equivalent from visual
+ * point of view
+ *
+ * It works by looking for accumulations of differences between two templates
+ *
+ * If the difference is bigger than concrete percentage of one of templates they are considered different, if such
+ * difference doesn't exist than they are equivalent
  */
-int areEquivalent(PIX *const firstTemplate, PIX *const secondTemplate);
+int are_equivalent(PIX *const firstTemplate, PIX *const secondTemplate);
 
 /**
- * printing pix bitmap to stderr -- just for testing
+ * Printing PIX as bitmap to standard error output
  */
-void printPix(PIX *pix);
+void print_pix(PIX *pix);
 
 #endif  // JBIG2OCR_JBIG2_H__

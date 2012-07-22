@@ -54,8 +54,8 @@ usage(const char *argv0) {
   fprintf(stderr, "  -4: upsample 4x before thresholding\n");
   fprintf(stderr, "  -S: remove images from mixed input and save separately\n");
   fprintf(stderr, "  -j --jpeg-output: write images from mixed input as JPEG\n");
-  fprintf(stderr, "  -a --autoThresh: engage using autoThresholding for symbol coder\n");
-  fprintf(stderr, "  --nohash: only for debugging purposes to allow easily compare performance with older version\n");
+  fprintf(stderr, "  -a --auto-thresh: use automatic thresholding in symbol encoder\n");
+  fprintf(stderr, "  --no-hash: disables use of hash function for automatic thresholding\n");
   fprintf(stderr, "  -V --version: version info\n");
   fprintf(stderr, "  -v: be verbose\n");
 }
@@ -211,7 +211,7 @@ main(int argc, char **argv) {
   l_int32 img_fmt = IFF_PNG;
   const char *img_ext = "png";
   bool segment = false;
-  bool autoThresh = false;
+  bool auto_thresh = false;
   bool hash = true;
   int i;
 
@@ -332,13 +332,13 @@ main(int argc, char **argv) {
     }
 
     // engage auto thresholding
-    if (strcmp(argv[i], "--autoThresh") == 0 || 
+    if (strcmp(argv[i], "--auto-thresh") == 0 || 
         strcmp(argv[i], "-a") == 0 ) {
-      autoThresh = true;
+      auto_thresh = true;
       continue;
     }
 
-    if (strcmp(argv[i], "--nohash") == 0) {
+    if (strcmp(argv[i], "--no-hash") == 0) {
       hash = false;
       continue;
     }
@@ -471,11 +471,11 @@ main(int argc, char **argv) {
     }
   }
 
-    if (autoThresh) {
+  if (auto_thresh) {
     if (hash) {
-      autoThresholdUsingHash(ctx);
+      auto_threshold_using_hash(ctx);
     } else {
-      autoThreshold(ctx);
+      auto_threshold(ctx);
     }
   }
 

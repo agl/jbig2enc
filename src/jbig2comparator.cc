@@ -42,60 +42,36 @@
 #define u8  uint8_t
 
 
-l_uint32 ** allocateMatrix(int xSize, int ySize) {
+/**
+ * Allocates matrix of preferred size
+ * xSize, ySize ... dimensions of the matrix
+ */
+/*static l_uint32 **
+allocate_matrix(int xSize, int ySize) {
   l_uint32 **matrix = new l_uint32*[xSize];
   for (int i = 0; i < xSize; i++) {
     matrix[i] = new l_uint32[ySize];
   }
   return matrix;
 }
-
-void freeMatrix(l_uint32 **matrix, int xSize) {
+*/
+/**
+ * Frees memory used by the matrix
+ *
+ * **matrix ... matrix which shall be freed from memory
+ * xSize ...... number of rows in matrix
+ */
+/*static void
+free_matrix(l_uint32 **matrix, int xSize) {
   for (int i = 0; i < xSize; i++) {
     delete[] matrix[i];
   }
   delete[] matrix;
 }
 
-/* Print n as a binary number 
- * just for testing
- */
-void printbitssimple(unsigned int n) {
-  unsigned int i;
-  i = 1<<(sizeof(n) * 8 - 1);
 
-  while (i > 0) {
-    if (n & i) {
-      fprintf(stderr,"1");
-    }
-    else {
-      fprintf(stderr,"0");
-    }
-    i >>= 1;
-  }
-}
-
-
-/* Print n as a binary number 
- * just for testing
- */
-void charprintbitssimple(char ch) {
-  unsigned int i;
-  i = 1<<(sizeof(ch) * 8 - 1);
-
-  while (i > 0) {
-    if (ch & i) {
-      fprintf(stderr,"1");
-    }
-    else {
-      fprintf(stderr,"0");
-    }
-    i >>= 1;
-  }
-}
-
-
-char * intsToChars(PIX *pix) {
+static char *
+ints_to_chars(PIX *pix) {
   l_uint32 h = pixGetHeight(pix);
   l_uint32 cpl = (pixGetWidth(pix)+7) / 8;
   fprintf(stderr, "cpl = %d\n", cpl);
@@ -117,12 +93,13 @@ char * intsToChars(PIX *pix) {
   dataAsChars[position] = '\0';
   return dataAsChars;
 }
-
+*/
 
 /**
- * printing pix bitmap to stderr -- just for testing
+ * Prints pix bitmap to stderr
  */
-void printPix(PIX *pix) {
+void
+print_pix(PIX *pix) {
   if (pix == NULL) {
     fprintf(stderr, "Unable to write PIX");
   }
@@ -147,18 +124,24 @@ void printPix(PIX *pix) {
 
 
 /**
- * compare two pix and tell if they are equivalent by trying to decide 
- * if these symbols look the same for user or not
- * it works by finding acumulations of differences between these two templates
- * if the difference is bigger than concrete percentage of one of templates than these templates 
- * if such difference doesn't exist than they are equivalent
+ * Compares two pix and tell if they are equivalent by trying to decide if these symbols are equivalent from visual
+ * point of view
+ *
+ * It works by looking for accumulations of differences between two templates
+ *
+ * If the difference is bigger than concrete percentage of one of templates they are considered different, if such
+ * difference doesn't exist than they are equivalent
+ *
+ * Parts of this function should be recreated using leptonica functions, which should speed up the process, but the
+ * principle should remain the same and the result as well
  */
-int areEquivalent(PIX *const firstTemplate, PIX *const secondTemplate) {
+int
+are_equivalent(PIX *const firstTemplate, PIX *const secondTemplate) {
   l_int32 w, h, d;
 
   // checking if they have the same size and depth
   if (!pixSizesEqual(firstTemplate, secondTemplate)) {
-	  return 0;
+      return 0;
   }
 
   l_int32 firstWpl = pixGetWpl(firstTemplate);
@@ -366,8 +349,8 @@ int areEquivalent(PIX *const firstTemplate, PIX *const secondTemplate) {
   }
 
   /*
-   * checking if four submatrixes of xored PIX data contains more ON pixels 
-   * than concrete percentage of ON pixels of firstTemplate  
+   * checking if four submatrixes of xored PIX data contains more ON pixels
+   * than concrete percentage of ON pixels of firstTemplate
    */
   for (int i = 0; i < (divider-1); i++) {
     for (int j = 0; j < (divider-1); j++) {
