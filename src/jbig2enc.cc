@@ -16,6 +16,7 @@
 // limitations under the License.
 
 #include <map>
+#include <list>
 #include <vector>
 #include <algorithm>
 
@@ -40,6 +41,9 @@
 #include "jbig2sym.h"
 #include "jbig2structs.h"
 #include "jbig2segments.h"
+#include "jbig2comparator.h"
+
+using namespace std;
 
 // -----------------------------------------------------------------------------
 // Returns the version identifier as a static string.
@@ -134,6 +138,352 @@ jbig2_init(float thresh, float weight, int xres, int yres, bool full_headers,
                                                     thresh, weight);
 
   return ctx;
+}
+
+/**
+ * Function for printing values in list separated by comma
+ */
+static void
+print_list(std::list<int> &listToPrint) {
+  list<int>::iterator printIt;
+  for (printIt = listToPrint.begin(); printIt != listToPrint.end(); printIt++) {
+    fprintf(stderr, "%d, ",(*printIt));
+  }
+  fprintf(stderr, "\n");
+}
+
+/**
+ * unites templates of the same character to chosen charater template
+ * *ctx ............... structure containing templates of symbols
+ * targetChar ......... char that will remain (united char will be replaced by
+ *          this char
+ * *charToBeUnited .... array of indexes to templates that should be replaced
+ *          by targetCharTemplate
+ *
+ * n .................. number of templates to be united
+ *
+ * returns 0 on success and in error number different from zero
+ */
+// TODO: find out which is the first index and transfer to this position target char
+static int
+unite_templates_in_the_list(struct jbig2ctx *ctx, int newRepresentant, list<int> &templatesToBeUnited) {
+  if (!ctx) {
+    fprintf(stderr, "ctx not given");
+    return 1;
+  }
+  if (templatesToBeUnited.empty()) {
+    fprintf(stderr, "given no templates for uniting");
+    return 1;
+  }
+
+#ifdef UNIFICATION_DEBUGGING
+  fprintf(stderr, "Uniting templates to point to template %d:\n", newRepresentant);
+  print_list(templatesToBeUnited);
+#endif
+
+  // check if newRepresentant exists
+  if ((newRepresentant < 0) ||
+    (newRepresentant >= pixaGetCount(ctx->classer->pixat))) {
+    fprintf(stderr, "new representant template out of range");
+    return 1;
+  }
+
+  list<int>::iterator it;
+  for (it = templatesToBeUnited.begin(); it != templatesToBeUnited.end(); it++) {
+
+    // first checking if the second template exists
+    int secondTemplate = (*it);
+    if ((secondTemplate < 0) ||
+    (secondTemplate >= pixaGetCount(ctx->classer->pixat))) {
+      fprintf(stderr, "template: %d out of range", (*it));
+      return 1;
+    }
+    // reindexing
+    for (int i = 0; i < ctx->classer->naclass->n; i++) {
+      int n;
+      numaGetIValue(ctx->classer->naclass, i, &n);
+      if (n == secondTemplate) {
+        numaSetValue(ctx->classer->naclass, i, newRepresentant);
+      }
+    }
+    pixChangeRefcount(ctx->classer->pixat->pix[newRepresentant],pixGetRefcount(ctx->classer->pixat->pix[secondTemplate]));
+  }
+  return 0;
+}
+
+
+/*
+ * ctx .... structure containing PIXA with templates
+ * list of templatesToRemove allready sorted
+ */
+static int
+remove_templates(jbig2ctx * ctx, std::list<int> &templatesToRemove) {
+  if (!ctx) {
+    fprintf(stderr, "ctx not given\n");
+    return 1;
+  }
+  if (templatesToRemove.empty()) {
+    fprintf(stderr, "given no templates to remove\n");
+    return 0;
+  }
+  templatesToRemove.sort();
+
+#ifdef UNIFICATION_DEBUGGING
+  fprintf(stderr, "Removing templates: ");
+  print_list(templatesToRemove);
+#endif
+
+  std::list<int>::iterator it;
+  it = templatesToRemove.begin();
+  PIXA * pixat = ctx->classer->pixat;
+
+  // index ... represents pointer to dictionary (PIXAT) and is processed in reverse
+  // it ... represents pointer to actual representant in list which should be removed
+  int last = templatesToRemove.back();
+  for (int index = (pixat->n - 1); ((it != templatesToRemove.end()) && (index >= (*it))); index--) {
+
+    // check if we assign PIX which should not be removed
+    if (index == last) {
+      templatesToRemove.pop_back();
+      last = templatesToRemove.back();
+    } else {
+      PIX * endPix;
+      PIX * coppiedPix;
+      BOXA * boxa;
+      int newIndex = (*it);
+      if (index != newIndex) {
+        endPix = ctx->classer->pixat->pix[index];
+        coppiedPix = pixCopy(NULL, endPix);
+        boxa = ctx->classer->pixat->boxa;
+        l_int32 nbox = boxaGetCount(boxa);
+        BOX * box = NULL;
+        if (index < nbox) {
+          box = boxa->box[index];
+        }
+        if (pixaReplacePix(ctx->classer->pixat, newIndex, coppiedPix, box)) {
+          fprintf(stderr, "uniting - unable to replace pix %d in pixat\n", newIndex);
+          return 2;
+        }
+        // reindexing
+        for (int i = 0; i < ctx->classer->naclass->n; i++) {
+          int n;
+          numaGetIValue(ctx->classer->naclass, i, &n);
+          if (n == index) {
+            numaSetValue(ctx->classer->naclass, i, newIndex);
+          }
+        }
+      }
+      it++;
+    }
+    if (pixaRemovePix(ctx->classer->pixat, index)) {
+      fprintf(stderr, "uniting - unable to remove pix with index %d from pixat\n", index);
+      return 3;
+    }
+    ctx->classer->nclass--;
+  }
+  return 0;
+}
+
+/**
+ * unites two templates to one template by reassigning indexes in numa struct and
+ * replacing deleted template by the last one
+ */
+static int
+unite_templates_with_indexes(struct jbig2ctx *ctx, int firstTemplateIndex, int secondTemplateIndex) {
+  if (!ctx) {
+    fprintf(stderr, "ctx doesn't exist");
+    return 1;
+  }
+
+  if ((ctx->classer->pixat->n < firstTemplateIndex) || (ctx->classer->pixat->n < secondTemplateIndex)) {
+    fprintf(stderr, "index doesn't point to templates array");
+    return 1;
+  }
+
+  // reindexing
+  for (int i = 0; i < ctx->classer->naclass->n; i++) {
+    int n;
+    numaGetIValue(ctx->classer->naclass, i, &n);
+    if (n == secondTemplateIndex) {
+      numaSetValue(ctx->classer->naclass, i, firstTemplateIndex);
+    }
+  }
+
+  pixChangeRefcount(ctx->classer->pixat->pix[firstTemplateIndex],pixGetRefcount(ctx->classer->pixat->pix[secondTemplateIndex]));
+
+  PIX * endPix;
+  PIX * coppiedPix;
+  BOXA * boxa;
+  int index = pixaGetCount(ctx->classer->pixat) - 1;
+  if (index != secondTemplateIndex) {
+    endPix = ctx->classer->pixat->pix[index];
+    coppiedPix = pixCopy(NULL, endPix);
+    boxa = ctx->classer->pixat->boxa;
+    l_int32 nbox = boxaGetCount(boxa);
+    BOX * box = NULL;
+    if (index < nbox) {
+      box = boxa->box[index];
+    }
+    if (pixaReplacePix(ctx->classer->pixat, secondTemplateIndex, coppiedPix, box)) {
+      fprintf(stderr, "uniting - unable to replace pix %d\n", secondTemplateIndex);
+      return 2;
+    }
+
+    // reindexing
+    for (int i = 0; i < ctx->classer->naclass->n; i++) {
+      int n;
+      numaGetIValue(ctx->classer->naclass, i, &n);
+      if (n == index) {
+        numaSetValue(ctx->classer->naclass, i, secondTemplateIndex);
+      }
+    }
+  }
+
+  if (pixaRemovePix(ctx->classer->pixat, index)) {
+     fprintf(stderr, "uniting - unable to remove pix from pixat");
+     return 3;
+  }
+  ctx->classer->nclass--;
+
+  return 0;
+}
+
+/** checks all PIXes in pixat (pixa of templates) if they are the same
+ *  if they are the same it calls method that makes from them only one template
+ *  and all indexes from second template are reindexed to the first one
+ */
+void auto_threshold(struct jbig2ctx *ctx) {
+  if (!ctx) {
+    fprintf(stderr, "jbig2ctx not given");
+    return;
+  }
+  PIXA *jbPixa = ctx->classer->pixat;
+  for (int i = 0; i < pixaGetCount(jbPixa); i++) {
+    PIX *jbPix = jbPixa->pix[i];
+
+    // checks if the PIX is not equivalent to any other
+    // looking just forward, because the operation are_equivalent is symetric
+    for (int j = i+1; j < pixaGetCount(jbPixa); j++) {
+      if (are_equivalent(jbPix, jbPixa->pix[j])) {
+        unite_templates_with_indexes(ctx, i, j);
+        j--;
+      }
+    }
+  }
+}
+
+
+static void
+print_hash_map(map<unsigned int, list<int> > &hashedTemplates) {
+  std::map<unsigned int, list<int> >::iterator it;
+  list<int>::iterator itRepresentants;
+  for (it = hashedTemplates.begin(); it != hashedTemplates.end(); it++) {
+    fprintf(stderr, "for hash %d:\n", it->first);
+    fprintf(stderr, "  -- ");
+    for (itRepresentants = it->second.begin(); itRepresentants != it->second.end(); itRepresentants++) {
+      fprintf(stderr, "%d ", (*itRepresentants));
+    }
+    fprintf(stderr, "\n");
+  }
+}
+
+static int
+count_hash(PIX * pix, std::map<unsigned int, std::list<int> > &hashMap, int templateIdx) {
+  if (!pix) {
+    fprintf(stderr, "no pix to count hash for\n");
+    return 1;
+  }
+
+  l_uint32 w = pixGetWidth(pix);
+  l_uint32 h = pixGetHeight(pix);
+
+  //finding num of holes
+  l_int32 holes;
+  pixCountConnComp(pix, 4, &holes);
+
+  unsigned int hash = (holes + 10 * h + 10000 * w) % 10000000;
+
+  map<unsigned int, list<int> >::iterator it;
+  it = hashMap.find(hash);
+
+  if (it == hashMap.end()) { // creating new bin
+    it = hashMap.begin();
+    list<int> representants;
+    representants.push_back(templateIdx);
+    hashMap.insert(pair<unsigned int, list<int> >(hash, representants));
+  } else { // add to existing bin
+      it->second.push_back(templateIdx);
+  }
+  return 0;
+}
+
+/**
+ *  checks all PIXes in pixat (pixa of templates) if they are the same
+ *  if they are the same it calls method that makes from them only one template
+ *  and all indexes from second template are reindexed to the first one
+ */
+void
+auto_threshold_using_hash(struct jbig2ctx *ctx) {
+  if (!ctx) {
+    fprintf(stderr, "jbig2ctx not given\n");
+    return;
+  }
+
+  std::map<unsigned int, std::list<int> > hashedTemplates;
+  // creating hash value for each representant
+  PIXA *jbPixa = ctx->classer->pixat;
+  for (int i = 0; i < pixaGetCount(jbPixa); i++) {
+    count_hash(jbPixa->pix[i], hashedTemplates, i);
+  }
+
+  #ifdef HASH_DEBUGING
+    print_hash_map(hashedTemplates);
+  #endif
+
+  map<unsigned int, list<int> > newRepresentants; // where int is chosenOne and vector<int> are old ones which should be replaced by chosenOne (united with it)
+  // going through representants with the same hash
+  std::map<unsigned int, list<int> >::iterator it;
+  std::list<int>::iterator itFirstTemplate;
+  std::list<int>::iterator itSecondTemplate;
+  for (it = hashedTemplates.begin(); it != hashedTemplates.end(); it++) {
+    //comparing all the templates with same hash
+    for (itFirstTemplate = it->second.begin(); itFirstTemplate != it->second.end();) {
+      list<int> templates;
+      templates.clear();
+      itSecondTemplate = itFirstTemplate;
+
+      for (++itSecondTemplate; itSecondTemplate != it->second.end();) {
+        if (are_equivalent(jbPixa->pix[(*itFirstTemplate)], jbPixa->pix[(*itSecondTemplate)])) {
+
+#ifdef UNIFICATION_DEBUGGING
+          fprintf(stderr, "Found PIXes recognized as equivalent");
+          print_pix(jbPixa->pix[(*itFirstTemplate)]);
+          print_pix(jbPixa->pix[(*itSecondTemplate)]);
+#endif
+          // unite templates without removing (just reindexing) but add to array for later remove
+          templates.push_back((*itSecondTemplate));
+          itSecondTemplate = (it->second.erase(itSecondTemplate));
+        } else {
+          itSecondTemplate++;
+        }
+      }
+      if (!templates.empty()) {
+        newRepresentants.insert(pair<unsigned int, list<int> >((*itFirstTemplate), templates));
+      }
+      itFirstTemplate++;
+    }
+  }
+  list<int> templatesToRemove;
+  list<int>::iterator itRemove;
+  for (it = newRepresentants.begin(); it != newRepresentants.end(); it++) {
+    if (!unite_templates_in_the_list(ctx, it->first, it->second)) {
+      templatesToRemove.merge(it->second);
+    }
+  }
+
+  if (remove_templates(ctx, templatesToRemove)) {
+    fprintf(stderr, "warning: removing united templates wasn't fully succesfull");
+  }
 }
 
 // see comments in .h file

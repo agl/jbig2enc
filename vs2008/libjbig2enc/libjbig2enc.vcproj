@@ -42,7 +42,7 @@
 				Name="VCCLCompilerTool"
 				Optimization="0"
 				AdditionalIncludeDirectories="..\..\..\include"
-				PreprocessorDefinitions="WIN32;_DEBUG;_LIB;VERSION=\&quot;0.28\&quot;"
+				PreprocessorDefinitions="WIN32;UNIFICATION_DEBUGGING;_DEBUG;_LIB;VERSION=\&quot;0.28\&quot;"
 				MinimalRebuild="true"
 				BasicRuntimeChecks="3"
 				RuntimeLibrary="3"
@@ -155,6 +155,10 @@
 				>
 			</File>
 			<File
+				RelativePath="..\..\src\jbig2comparator.cc"
+				>
+			</File>
+			<File
 				RelativePath="..\..\src\jbig2enc.cc"
 				>
 			</File>
@@ -170,6 +174,10 @@
 			>
 			<File
 				RelativePath="..\..\src\jbig2arith.h"
+				>
+			</File>
+			<File
+				RelativePath="..\..\src\jbig2comparator.h"
 				>
 			</File>
 			<File
