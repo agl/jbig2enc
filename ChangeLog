@@ -5,6 +5,8 @@
   * version info (-V --version)
   * pdf.py now correctly retains DPI from input images (thanks to Steven Lee
     http://blog.rubypdf.com/2011/09/09/jbig2-pdf-py-patch-the-right-way-to-get-dpi/)
+  * R. Hatlapatka: option to use autoThresholding. Improved version from
+    bachelor thesis JBIG2 compression http://is.muni.cz/th/208155/fi_b/.
 
 0.27:
   * Update to the latest Leptonica (1.58)
