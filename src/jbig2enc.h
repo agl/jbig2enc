@@ -140,19 +140,15 @@ jbig2_encode_generic(struct Pix *const bw, const bool full_headers,
                      int *const length);
 
 // -------------------------------------------------------------------------------
-// Checks all PIXes in pixat (pixa of templates) if they are the same
-// if they are the same it calls method that makes from them only one template
-// and all indexes from second template are reindexed to the first one
-//
-// requires implementation of functions uniteTemplates(struct jbig2ctx *ctx, int firstTemplate, int secondTemplate)
-// are_equivalent(PIX *const firstTemplate, PIX *const secondTemplate)
+// jbig2enc_auto_threshold gathers classes of symbols and uses a single
+// representative to stand for them all.
 // -------------------------------------------------------------------------------
-void auto_threshold(struct jbig2ctx *ctx);
+void jbig2enc_auto_threshold(struct jbig2ctx *ctx);
 
 // -------------------------------------------------------------------------------
-// The same as autoThreshold, but it adds hash function in order to prevent
-// unnecessary comparision and thus improve speed performance
+// auto_threshold_using_hash performs the same action as auto_threshold, but
+// uses a hash function to attempt to quickly discard improbable matches.
 // -------------------------------------------------------------------------------
-void auto_threshold_using_hash(struct jbig2ctx *ctx);
+void jbig2enc_auto_threshold_using_hash(struct jbig2ctx *ctx);
 
 #endif  // JBIG2ENC_JBIG2_H__

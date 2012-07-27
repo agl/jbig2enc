@@ -332,7 +332,7 @@ main(int argc, char **argv) {
     }
 
     // engage auto thresholding
-    if (strcmp(argv[i], "--auto-thresh") == 0 || 
+    if (strcmp(argv[i], "--auto-thresh") == 0 ||
         strcmp(argv[i], "-a") == 0 ) {
       auto_thresh = true;
       continue;
@@ -356,7 +356,7 @@ main(int argc, char **argv) {
     usage(argv[0]);
     return 4;
   }
- 
+
   if (refine && !symbol_mode) {
     fprintf(stderr, "Refinement makes not sense unless in symbol mode!\n");
     fprintf(stderr, "(if you have -r, you must have -s)\n");
@@ -473,9 +473,9 @@ main(int argc, char **argv) {
 
   if (auto_thresh) {
     if (hash) {
-      auto_threshold_using_hash(ctx);
+      jbig2enc_auto_threshold_using_hash(ctx);
     } else {
-      auto_threshold(ctx);
+      jbig2enc_auto_threshold(ctx);
     }
   }
 

@@ -1,4 +1,4 @@
-// Copyright 2006 Google Inc. All Rights Reserved.
+// Copyright 2012 Google Inc. All Rights Reserved.
 // Author: hata.radim@gmail.com (Radim Hatlapatka)
 //
 // Copyright (C) 2012 Google Inc.
@@ -41,118 +41,22 @@
 #define u16 uint16_t
 #define u8  uint8_t
 
-
-/**
- * Allocates matrix of preferred size
- * xSize, ySize ... dimensions of the matrix
- */
-/*static l_uint32 **
-allocate_matrix(int xSize, int ySize) {
-  l_uint32 **matrix = new l_uint32*[xSize];
-  for (int i = 0; i < xSize; i++) {
-    matrix[i] = new l_uint32[ySize];
-  }
-  return matrix;
-}
-*/
-/**
- * Frees memory used by the matrix
- *
- * **matrix ... matrix which shall be freed from memory
- * xSize ...... number of rows in matrix
- */
-/*static void
-free_matrix(l_uint32 **matrix, int xSize) {
-  for (int i = 0; i < xSize; i++) {
-    delete[] matrix[i];
-  }
-  delete[] matrix;
-}
-
-
-static char *
-ints_to_chars(PIX *pix) {
-  l_uint32 h = pixGetHeight(pix);
-  l_uint32 cpl = (pixGetWidth(pix)+7) / 8;
-  fprintf(stderr, "cpl = %d\n", cpl);
-  l_uint32 wpl = pixGetWpl(pix);
-  l_uint32 *dataAsInts = pixGetData(pix);
-  char * dataAsChars;
-  dataAsChars = (char*)calloc((h*cpl)+1,sizeof(char));
-  int position = 0;
-  for (l_uint16 i=0; i < h; i++) {
-    for (l_uint16 j=0; j<wpl; j++) {
-      l_uint32 num = dataAsInts[i*wpl+j];
-      dataAsChars[position++] = (char)((num >> 24) & 0xFF);
-      dataAsChars[position++] = (char)((num >> 16) & 0xFF);
-      dataAsChars[position++] = (char)((num >> 8) & 0xFF);
-      dataAsChars[position++] = (char)(num & 0xFF);
-    }
-    position -= ((wpl*4) - cpl);
-  }
-  dataAsChars[position] = '\0';
-  return dataAsChars;
-}
-*/
-
-/**
- * Prints pix bitmap to stderr
- */
-void
-print_pix(PIX *pix) {
-  if (pix == NULL) {
-    fprintf(stderr, "Unable to write PIX");
-  }
-  l_uint32 w = pixGetWidth(pix);
-  l_uint32 h = pixGetHeight(pix);
-  l_uint32 initUnsigned = 0;
-  l_uint32 *pval = &initUnsigned;
-
-  fprintf(stderr, "output before conversion (default) as *l_uint32\n");
-  for (l_uint16 i = 0; i < h; i++) {
-    for (l_uint16 j = 0; j < w; j++) {
-      if (pixGetPixel(pix, j, i, pval)) {
-        fprintf(stderr, "unable to read pixel from pix\n");
-        break;
-      }
-      fprintf(stderr, "%d",*pval);
-    }
-    fprintf(stderr, "\n");
-  }
-
-}
-
-
-/**
- * Compares two pix and tell if they are equivalent by trying to decide if these symbols are equivalent from visual
- * point of view
- *
- * It works by looking for accumulations of differences between two templates
- *
- * If the difference is bigger than concrete percentage of one of templates they are considered different, if such
- * difference doesn't exist than they are equivalent
- *
- * Parts of this function should be recreated using leptonica functions, which should speed up the process, but the
- * principle should remain the same and the result as well
- */
-int
-are_equivalent(PIX *const firstTemplate, PIX *const secondTemplate) {
+bool
+jbig2enc_are_equivalent(PIX *const first_template, PIX *const second_template) {
   l_int32 w, h, d;
 
-  // checking if they have the same size and depth
-  if (!pixSizesEqual(firstTemplate, secondTemplate)) {
-      return 0;
+  if (!pixSizesEqual(first_template, second_template)) {
+    return false;
   }
 
-  l_int32 firstWpl = pixGetWpl(firstTemplate);
-  l_int32 secondWpl = pixGetWpl(secondTemplate);
+  l_int32 first_wpl = pixGetWpl(first_template);
+  l_int32 second_wpl = pixGetWpl(second_template);
 
-  if (firstWpl != secondWpl) {
-    return 0;
+  if (first_wpl != second_wpl) {
+    return false;
   }
 
-  PIX * pixd;
-  pixd = pixXor(NULL, firstTemplate, secondTemplate);
+  PIX *pixd = pixXor(NULL, first_template, second_template);
 
   pixGetDimensions(pixd, &w, &h, &d);
 
@@ -160,207 +64,196 @@ are_equivalent(PIX *const firstTemplate, PIX *const secondTemplate) {
   l_int32 *pcount = &init;
   l_int32 *above = &init;
 
-
-  // counting number of ON pixels in firstTemplate
-  if (pixCountPixels(firstTemplate, pcount, NULL)) {
+  // counting number of ON pixels in first_template
+  if (pixCountPixels(first_template, pcount, NULL)) {
     fprintf(stderr, "Unable to count pixels\n");
     pixDestroy(&pixd);
-    return 0;
+    return false;
   }
 
-  // just for speed up if two symbols are very different
+  // shortcut to failure if the symbols are significantly different.
   l_int32 thresh = (*pcount) * 0.25;
   if (pixThresholdPixelSum(pixd, thresh, above, NULL)) {
     fprintf(stderr, "Unable to count pixels of XORed pixes\n");
     pixDestroy(&pixd);
-    return 0;
+    return false;
   }
-
 
   if ((*above) == 1) {
     pixDestroy(&pixd);
-    return 0;
+    return false;
   }
 
-  l_uint32 initUnsigned = 0;
-  l_uint32 *pval = &initUnsigned;
+  l_uint32 init_unsigned = 0;
+  l_uint32 *pval = &init_unsigned;
   const int divider = 9;
   const int vertical = divider * 2;
   const int horizontal = divider * 2;
 
-  l_uint32 parsedPixCounts[divider][divider];
-  l_uint32 horizontalParsedPixCounts[horizontal][divider];
-  l_uint32 verticalParsedPixCounts[divider][vertical];
+  l_uint32 parsed_pix_counts[divider][divider];
+  l_uint32 horizontal_parsed_pix_counts[horizontal][divider];
+  l_uint32 vertical_parsed_pix_counts[divider][vertical];
 
   if (d != 1) {
-    return 0;
+    return false;
   }
 
-  int verticalPart = h/divider;
-  int horizontalPart = w/divider;
+  int vertical_part = h/divider;
+  int horizontal_part = w/divider;
 
-  int horizontalModuleCounter = 0;
-  int verticalModuleCounter = 0;
+  int horizontal_module_counter = 0;
+  int vertical_module_counter = 0;
 
-
-  // counting area of elipse and taking percentage of it as pointThresh
-  int a;
-  int b;
-  if (verticalPart < horizontalPart) {
-    a = horizontalPart / 2;
-    b = verticalPart / 2;
+  // counting area of ellipse and taking percentage of it as point_thresh
+  int a, b;
+  if (vertical_part < horizontal_part) {
+    a = horizontal_part / 2;
+    b = vertical_part / 2;
   } else {
-    a = verticalPart / 2;
-    b = horizontalPart / 2;
+    a = vertical_part / 2;
+    b = horizontal_part / 2;
   }
 
-  float pointThresh = a * b * M_PI;
-  l_int32 vlineThresh = (verticalPart * (horizontalPart/2))*0.9;
-  l_int32 hlineThresh = (horizontalPart * (verticalPart/2))*0.9;
+  float point_thresh = a * b * M_PI;
+  l_int32 vline_thresh = (vertical_part * (horizontal_part/2))*0.9;
+  l_int32 hline_thresh = (horizontal_part * (vertical_part/2))*0.9;
 
-
-  /*
-   * going through submatrixes
-   */
-  for (int horizontalPosition=0; horizontalPosition < divider; horizontalPosition++) {
-    int horizontalStart = horizontalPart*horizontalPosition + horizontalModuleCounter;
-    int horizontalEnd;
-    if (horizontalPosition == (divider-1)) {
-      horizontalModuleCounter = 0;
-      horizontalEnd = w;
+  // iterate through submatrixes
+  for (int horizontal_position = 0; horizontal_position < divider; horizontal_position++) {
+    int horizontal_start = horizontal_part*horizontal_position + horizontal_module_counter;
+    int horizontal_end;
+    if (horizontal_position == (divider-1)) {
+      horizontal_module_counter = 0;
+      horizontal_end = w;
     } else {
-      if (((w - horizontalModuleCounter) % divider)>0) {
-        horizontalEnd = horizontalStart + horizontalPart + 1;
-        horizontalModuleCounter++;
+      if (((w - horizontal_module_counter) % divider)>0) {
+        horizontal_end = horizontal_start + horizontal_part + 1;
+        horizontal_module_counter++;
       } else {
-        horizontalEnd = horizontalStart + horizontalPart;
+        horizontal_end = horizontal_start + horizontal_part;
       }
     }
 
-    // zkus spustit ve vlaknech
-    for (int verticalPosition=0; verticalPosition < divider; verticalPosition++) {
-      int verticalStart = verticalPart*verticalPosition + verticalModuleCounter;
-      int verticalEnd;
-      if (verticalPosition == (divider-1)) {
-        verticalModuleCounter = 0;
-        verticalEnd = h;
+    for (int vertical_position = 0; vertical_position < divider; vertical_position++) {
+      int vertical_start = vertical_part*vertical_position + vertical_module_counter;
+      int vertical_end;
+      if (vertical_position == (divider-1)) {
+        vertical_module_counter = 0;
+        vertical_end = h;
       } else {
-        if (((h - verticalModuleCounter) % divider)>0) {
-          verticalEnd = verticalStart + verticalPart + 1;
-          verticalModuleCounter++;
+        if (((h - vertical_module_counter) % divider)>0) {
+          vertical_end = vertical_start + vertical_part + 1;
+          vertical_module_counter++;
         } else {
-          verticalEnd = verticalStart + verticalPart;
+          vertical_end = vertical_start + vertical_part;
         }
       }
 
-      // making sum of ON pixels in submatrix and saving the result to matrix of sums
-      int leftCounter = 0;
-      int rightCounter = 0;
-      int downCounter = 0;
-      int upCounter = 0;
+      // making sum of ON pixels in submatrix and saving the result to matrix of sums.
+      int left_count = 0;
+      int right_count = 0;
+      int down_count = 0;
+      int up_count = 0;
 
-      int midleOfHorizontalPart = (horizontalStart + horizontalEnd) / 2;
-      int midleOfVerticalPart = (verticalStart + verticalEnd) / 2;
+      int horizontal_center = (horizontal_start + horizontal_end) / 2;
+      int vertical_center = (vertical_start + vertical_end) / 2;
 
-      for (int i = horizontalStart; i < horizontalEnd; i++) {
-        for (int j = verticalStart; j < verticalEnd; j++) {
+      for (int i = horizontal_start; i < horizontal_end; i++) {
+        for (int j = vertical_start; j < vertical_end; j++) {
           if (pixGetPixel(pixd, i, j, pval)) {
             fprintf(stderr, "unable to read pixel from pix\n");
             break;
           }
 
           if (*pval == 1) {
-            if (i < midleOfHorizontalPart) {
-              leftCounter++;
+            if (i < horizontal_center) {
+              left_count++;
             } else {
-              rightCounter++;
+              right_count++;
             }
-            if (j < midleOfVerticalPart) {
-              upCounter++;
+            if (j < vertical_center) {
+              up_count++;
             } else {
-              downCounter++;
+              down_count++;
             }
           }
         }
       }
-      parsedPixCounts[horizontalPosition][verticalPosition] = leftCounter + rightCounter;
+      parsed_pix_counts[horizontal_position][vertical_position] = left_count + right_count;
 
-      horizontalParsedPixCounts[horizontalPosition*2][verticalPosition] = leftCounter;
-      horizontalParsedPixCounts[(horizontalPosition*2)+1][verticalPosition] = rightCounter;
+      horizontal_parsed_pix_counts[horizontal_position*2][vertical_position] = left_count;
+      horizontal_parsed_pix_counts[(horizontal_position*2)+1][vertical_position] = right_count;
 
-      verticalParsedPixCounts[horizontalPosition][verticalPosition*2] = upCounter;
-      verticalParsedPixCounts[horizontalPosition][(verticalPosition*2)+1] = downCounter;
-
+      vertical_parsed_pix_counts[horizontal_position][vertical_position*2] = up_count;
+      vertical_parsed_pix_counts[horizontal_position][(vertical_position*2)+1] = down_count;
     }
   }
 
-  // destroying XORed pix -- all needed informations are gathered already
   pixDestroy(&pixd);
 
-  // checking for horizontal lines
-    for (int i = 0; (i < (divider*2)-1); i++) {
+  // check for horizontal lines
+  for (int i = 0; (i < (divider*2)-1); i++) {
     for (int j = 0; j < (divider-1); j++) {
-      int horizontalSum = 0;
+      int horizontal_sum = 0;
       for (int x = 0; x < 2; x++) {
         for (int y = 0; y < 2; y++) {
-          horizontalSum += horizontalParsedPixCounts[i+x][j+y];
+          horizontal_sum += horizontal_parsed_pix_counts[i+x][j+y];
         }
       }
-      if (horizontalSum > hlineThresh) {
+      if (horizontal_sum > hline_thresh) {
         return 0;
       }
     }
   }
 
-  // checking for vertical lines
+  // check for vertical lines
   for (int i = 0; i < (divider-1); i++) {
     for (int j = 0; j < ((divider*2)-1); j++) {
-      int verticalSum = 0;
+      int vertical_sum = 0;
       for (int x = 0; x < 2; x++) {
         for (int y = 0; y < 2; y++) {
-        verticalSum += verticalParsedPixCounts[i+x][j+y];
+        vertical_sum += vertical_parsed_pix_counts[i+x][j+y];
         }
       }
-      if (verticalSum > vlineThresh) {
+      if (vertical_sum > vline_thresh) {
         return 0;
       }
     }
   }
 
-  // checking for (cross lines)
+  // check for cross lines
   for (int i = 0; i < (divider - 2); i++) {
     for (int j = 0; j < (divider - 2); j++) {
-      int leftCross = 0;
-      int rightCross = 0;
+      int left_cross = 0;
+      int right_cross = 0;
       for (int x = 0; x < 3; x++) {
         for (int y = 0; y < 3; y++) {
           if (x == y) {
-            leftCross += parsedPixCounts[i+x][j+y];
+            left_cross += parsed_pix_counts[i+x][j+y];
           }
           if ((2-x) == y) {
-            rightCross += parsedPixCounts[i+x][j+y];
+            right_cross += parsed_pix_counts[i+x][j+y];
           }
         }
       }
-      if ((leftCross > hlineThresh) || (rightCross > hlineThresh)) {
+      if ((left_cross > hline_thresh) || (right_cross > hline_thresh)) {
         return 0;
       }
     }
   }
 
-  /*
-   * checking if four submatrixes of xored PIX data contains more ON pixels
-   * than concrete percentage of ON pixels of firstTemplate
-   */
+  // check whether four submatrixes of XORed PIX data contains more ON pixels
+  // than concrete percentage of ON pixels of first_template.
+
   for (int i = 0; i < (divider-1); i++) {
     for (int j = 0; j < (divider-1); j++) {
       int sum = 0;
       for (int x = 0; x < 2; x++) {
         for (int y = 0; y < 2; y++) {
-          sum += parsedPixCounts[i+x][j+y];
+          sum += parsed_pix_counts[i+x][j+y];
         }
       }
-      if (sum > pointThresh) {
+      if (sum > point_thresh) {
         return 0;
       }
     }
