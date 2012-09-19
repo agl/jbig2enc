@@ -1,3 +1,5 @@
+0.29: (not yet released)
+
 0.28:
   * Update to the latest Leptonica (1.68)
   * autotools support, VC++ 2008 solution
