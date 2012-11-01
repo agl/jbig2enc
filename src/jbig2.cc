@@ -392,6 +392,7 @@ main(int argc, char **argv) {
     PIX *source;
     if (numsubimages<=1) {
       source = pixRead(argv[i]);
+      numsubimages = 0;
     } else {
       source = pixReadTiff(argv[i], subimage++);
     }
