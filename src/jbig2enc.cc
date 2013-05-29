@@ -454,12 +454,6 @@ jbig2enc_auto_threshold_using_hash(struct jbig2ctx *ctx) {
 
       for (++second_template_it; second_template_it != it->second.end();) {
         if (jbig2enc_are_equivalent(pixa->pix[(*first_template_it)], pixa->pix[(*second_template_it)])) {
-#ifdef UNIFICATION_DEBUGGING
-          fprintf(stderr, "Found PIXes recognized as equivalent");
-          print_pix(pixa->pix[(*first_template_it)]);
-          print_pix(pixa->pix[(*second_template_it)]);
-#endif
-
           // unite templates without removing (just reindexing) but add to
           // array for later removal.
           templates.push_back(*second_template_it);
