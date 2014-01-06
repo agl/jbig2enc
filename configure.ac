@@ -3,6 +3,11 @@ AC_INIT([jbig2enc], [0.28], [agl@imperialviolet.org], [jbig2enc-0.28],
 		[https://github.com/agl/jbig2enc])
 AC_CONFIG_MACRO_DIR([m4])
 AM_INIT_AUTOMAKE([-Wall -Werror foreign no-dependencies])
+
+# this should fix automake 1.12 build and compatible with automake 1.11
+m4_ifdef([AM_PROG_AR], [AM_PROG_AR])
+LT_INIT
+
 AC_PROG_CXX
 AC_PROG_LIBTOOL
 
@@ -26,9 +31,6 @@ GENERIC_RELEASE=$GENERIC_MAJOR_VERSION.$GENERIC_MINOR_VERSION
 AC_SUBST(GENERIC_RELEASE)
 AC_SUBST(GENERIC_VERSION)
 
-# this should fix automake 1.12 build and compatible with automake 1.11
-m4_ifdef([AM_PROG_AR], [AM_PROG_AR])
-
 # default conditional
 AM_CONDITIONAL(MINGW, false)
 
@@ -50,6 +52,26 @@ case $host_os in
 		# default
 		;;
 esac 
+
+# Check if rpath is disabled
+AC_MSG_CHECKING(whether to use rpath)
+AC_ARG_ENABLE(rpath,
+	[AC_HELP_STRING([--disable-rpath],
+			[Patches libtool to not use rpath in the libraries produced.])],
+	[enable_rpath="$enableval"], [enable_rpath="yes"])
+AC_MSG_RESULT($enable_rpath)
+
+AM_CONDITIONAL([ENABLE_RPATH], [test "x$enable_rpath" = "xyes"])
+
+AC_CONFIG_COMMANDS([libtool-rpath-patch],
+	[if test "$libtool_patch_use_rpath" = "no"; then
+		sed < libtool > libtool-2 's/^hardcode_libdir_flag_spec.*$'/'hardcode_libdir_flag_spec=""/'
+		mv libtool-2 libtool
+		sed < libtool > libtool-2 's/^runpath_var=LD_RUN_PATH$'/'runpath_var=DIE_RPATH_DIE/'
+		mv libtool-2 libtool
+		chmod 755 libtool
+	fi],
+[libtool_patch_use_rpath=$enable_rpath])
 
 AC_CHECK_LIB([lept], [findFileFormatStream], [], [
 			echo "Error! Leptonica not detected."
