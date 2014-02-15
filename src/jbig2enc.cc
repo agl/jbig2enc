@@ -307,9 +307,6 @@ unite_templates_with_indexes(struct jbig2ctx *ctx, int firstTemplateIndex,
     }
   }
 
-  pixChangeRefcount(ctx->classer->pixat->pix[firstTemplateIndex],
-                    pixGetRefcount(ctx->classer->pixat->pix[second_template_index]));
-
   PIX * end_pix;
   PIX * copied_pix;
   BOXA * boxa;
