@@ -55,6 +55,7 @@ AC_CHECK_LIB([lept], [findFileFormatStream], [], [
 			echo "Error! Leptonica not detected."
 			exit -1
 			])
+AC_CHECK_FUNCS(expandBinaryPower2Low,,)
 # test for function - it should detect leptonica dependecies
 
 # Check for possible dependancies of leptonica.

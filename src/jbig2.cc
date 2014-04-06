@@ -130,11 +130,16 @@ segment_image(PIX *pixb, PIX *piximg) {
   // input color image, so we have to do it this way...
   // is there a better way?
   // PIX *pixd = pixExpandBinary(pixd4, 4);
-  PIX *pixd = pixCreate(piximg->w, piximg->h, 1);
-  pixCopyResolution(pixd, piximg);
-  if (verbose) pixInfo(pixd, "mask image: ");
-  expandBinaryPower2Low(pixd->data, pixd->w, pixd->h, pixd->wpl,
+  PIX *pixd;
+#ifdef HAVE_EXPANDBINARYPOWER2LOW
+    pixd = pixCreate(piximg->w, piximg->h, 1);
+    pixCopyResolution(pixd, piximg);
+    expandBinaryPower2Low(pixd->data, pixd->w, pixd->h, pixd->wpl,
                         pixd4->data, pixd4->w, pixd4->h, pixd4->wpl, 4);
+#else
+    pixd = pixExpandBinaryPower2(pixd4, 4);
+#endif
+  if (verbose) pixInfo(pixd, "mask image: ");
 
   pixDestroy(&pixd4);
   pixDestroy(&pixsf4);
