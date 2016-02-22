@@ -17,6 +17,16 @@ extract() {
   echo "$DIR"
 }
 
+force() {
+  DIR="$1"
+
+  cd "$DIR" || exit 1
+
+  for f in *.png; do
+    convert "$f" -monochrome "$f" || exit 1
+  done
+}
+
 process() {
   DIR="$1"
 
@@ -74,6 +84,12 @@ case $key in
     -c|--compile)
     COMPILE=YES
     ;;
+    -f|--force)
+    FORCE=YES
+    ;;
+    -m|--monochrome)
+    MONOCHROME=YES
+    ;;
     -dt|--density_text)
     DT="$2"
     shift # past argument
@@ -94,17 +110,22 @@ shift # past argument or value
 done
 
 if [ "$EXTRACT" == "YES" ];then
-  extract "$@"
+  extract "$@" || exit 1
   exit 0
 fi
 
 if [ "$PROCESS" == "YES" ];then
-  process "$@"
+  process "$@" || exit 1
   exit 0
 fi
 
 if [ "$COMPILE" == "YES" ];then
-  compile "$@"
+  compile "$@" || exit 1
+  exit 0
+fi
+
+if [ "$MONOCHROME" == "YES" ]; then
+  (force "$@") || exit 1
   exit 0
 fi
 
@@ -114,6 +135,9 @@ for f in "$@"; do
     exit 1
   fi
   DIR=`extract "$f"` || exit 1
+  if [ "$FORCE" == "YES" ]; then
+    (force "$DIR") || exit 1 
+  fi
   (process "$DIR") || exit 1
   (compile "$DIR" "$f") || exit 1
   rm -rf "$DIR" || exit 1
