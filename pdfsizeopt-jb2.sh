@@ -14,7 +14,7 @@ extract() {
 
   PNG="$DIR/${FILE%.*}-%04d.png"
   convert -units PixelsPerInch -density $DT "$FILE" "$PNG" || exit 1
-  echo $DIR
+  echo "$DIR"
 }
 
 process() {
@@ -74,12 +74,13 @@ case $key in
     -c|--compile)
     COMPILE=YES
     ;;
-    -a|--aaa)
-    AAA="$2"
+    -dt|--density_text)
+    DT="$2"
     shift # past argument
     ;;
-    --default)
-    DEFAULT=YES
+    -di|--density_image)
+    DI="$2"
+    shift # past argument
     ;;
     -h|--help)
     usage
