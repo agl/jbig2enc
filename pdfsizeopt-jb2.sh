@@ -130,7 +130,7 @@ if [ "$MONOCHROME" == "YES" ]; then
 fi
 
 for f in "$@"; do
-  if [ ! -e "$f" ]; then
+  if [ ! -f "$f" ]; then
     echo "file not found: $f"
     exit 1
   fi
