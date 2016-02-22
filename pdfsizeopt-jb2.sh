@@ -22,7 +22,20 @@ force() {
 
   cd "$DIR" || exit 1
 
-  for f in *.png; do
+  declare -a files
+  files=(*.png)
+
+  tLen=${#files[@]}
+  let tLen=tLen-1
+
+  for (( i=0; i<=${tLen}; i++ )); do
+    if [ "$KEEPFIRST" == "YES" ] && [ $i -eq 0 ]; then
+      continue
+    fi
+    if [ "$KEEPLAST" == "YES" ] && [ $i -eq $tLen ]; then
+      continue
+    fi
+    f=${files[$i]}
     convert "$f" -monochrome "$f" || exit 1
   done
 }
@@ -89,6 +102,12 @@ case $key in
     ;;
     -m|--monochrome)
     MONOCHROME=YES
+    ;;
+    -kf|--keepfirst)
+    KEEPFIRST=YES
+    ;;
+    -kl|--keeplast)
+    KEEPLAST=YES
     ;;
     -dt|--density_text)
     DT="$2"
