@@ -28,8 +28,6 @@ import os
 # Run ./jbig2 -s -p <other options> image1.jpeg image1.jpeg ...
 # python pdf.py output > out.pdf
 
-dpi = 72
-
 class Ref:
   def __init__(self, x):
     self.x = x
@@ -122,7 +120,132 @@ class Doc:
 def ref(x):
   return '%d 0 R' % x
 
-def main(symboltable='symboltable', pagefiles=glob.glob('page-*')):
+#
+# http://stackoverflow.com/questions/8032642
+#
+def get_image_size(fname):
+    '''Determine the image type of fhandle and return its size.
+    from draco'''
+    with open(fname, 'rb') as fhandle:
+        head = fhandle.read(24)
+        if len(head) != 24:
+            return
+        if imghdr.what(fname) == 'png':
+            check = struct.unpack('>i', head[4:8])[0]
+            if check != 0x0d0a1a0a:
+                return
+            width, height = struct.unpack('>ii', head[16:24])
+        elif imghdr.what(fname) == 'gif':
+            width, height = struct.unpack('<HH', head[6:10])
+        elif imghdr.what(fname) == 'jpeg':
+            try:
+                fhandle.seek(0) # Read 0xff next
+                size = 2
+                ftype = 0
+                while not 0xc0 <= ftype <= 0xcf:
+                    fhandle.seek(size, 1)
+                    byte = fhandle.read(1)
+                    while ord(byte) == 0xff:
+                        byte = fhandle.read(1)
+                    ftype = ord(byte)
+                    size = struct.unpack('>H', fhandle.read(2))[0] - 2
+                # We are at a SOFn block
+                fhandle.seek(1, 1)  # Skip `precision' byte.
+                height, width = struct.unpack('>HH', fhandle.read(4))
+            except Exception: #IGNORE:W0703
+                return
+        else:
+            return
+        return width, height
+
+
+
+# https://www.opennet.ru/docs/formats/jpeg.txt
+#
+# - $ff, $c0 (SOF0)
+# - length (high byte, low byte), 8+components*3
+# - data precision (1 byte) in bits/sample, usually 8 (12 and 16 not
+#   supported by most software)
+# - image height (2 bytes, Hi-Lo), must be >0 if DNL not supported
+# - image width (2 bytes, Hi-Lo), must be >0 if DNL not supported
+# - number of components (1 byte), usually 1 = grey scaled, 3 = color YCbCr
+#   or YIQ, 4 = color CMYK)
+# - for each component: 3 bytes
+#    - component id (1 = Y, 2 = Cb, 3 = Cr, 4 = I, 5 = Q)
+#    - sampling factors (bit 0-3 vert., 4-7 hor.)
+#    - quantization table number
+
+def loadimage(contents, symd):
+  if contents[6:10] == "JFIF":
+    pos = 0
+    pos += 2
+    b = contents[pos]
+    while (b and ord(b) != 0xDA):
+        while (ord(b) != 0xFF):
+          b = contents[pos]
+          pos = pos + 1
+        while (ord(b) == 0xFF):
+          b = contents[pos]
+          pos = pos + 1
+        if (ord(b) >= 0xC0 and ord(b) <= 0xC3):
+            pos += 2
+            comps = ord(contents[pos])
+            pos += 1
+            h, w = struct.unpack(">HH", contents[pos:pos+4])
+            pos += 4
+            t = ord(contents[pos])
+            break
+        else:
+            s = int(struct.unpack(">H", contents[pos:pos+2])[0])-2
+            pos += s
+        b = contents[pos]
+        pos = pos + 1
+
+    width = int(w)
+    height = int(h)
+
+    dens = contents[0x0d]
+    if ord(dens) != 0x01: # Pixels per inch (2.54 cm)
+      raise "wrong dens"
+    xres, yres = struct.unpack(">HH", contents[0x0e:0x12])
+    
+    if t == 0x01:
+      tt = "/DeviceGray"
+    if t == 0x03:
+      tt = "/DeviceRGB"
+
+    # sys.stderr.write("JP: %d %s %d %d %s %d %d\n" % (comps, tt, width, height, str(len(contents)), xres, yres))
+    
+    if xres == 0:
+        xres = 150
+    if yres == 0:
+        yres = 150
+
+    xobj = Obj({'Type': '/XObject', 'Subtype': '/Image',
+        'Width': str(width),
+        'Height': str(height),
+        'ColorSpace': tt,
+        'BitsPerComponent': str(comps),
+        'Length': str(len(contents)),
+        'Filter': '/DCTDecode'}, contents)
+
+    return (width, height, xres, yres, xobj)
+  else:
+    (width, height, xres, yres) = struct.unpack('>IIII', contents[11:27])
+
+    if xres == 0:
+        xres = 300
+    if yres == 0:
+        yres = 300
+
+    xobj = Obj({'Type': '/XObject', 'Subtype': '/Image', 'Width':
+        str(width), 'Height': str(height), 'ColorSpace': '/DeviceGray',
+        'BitsPerComponent': '1', 'Filter': '/JBIG2Decode', 'DecodeParms':
+        ' << /JBIG2Globals %d 0 R >>' % symd.id}, contents)
+
+    return (width, height, xres, yres, xobj)
+
+def main(symboltable='symboltable'):
   doc = Doc()
   doc.add_object(Obj({'Type' : '/Catalog', 'Outlines' : ref(2), 'Pages' : ref(3)}))
   doc.add_object(Obj({'Type' : '/Outlines', 'Count': '0'}))
@@ -131,24 +254,19 @@ def main(symboltable='symboltable', pagefiles=glob.glob('page-*')):
   symd = doc.add_object(Obj({}, file(symboltable, 'rb').read()))
   page_objs = []
 
-  pagefiles.sort()
+  with open('index', 'r') as index:
+    pagefiles=index.readlines()
+
   for p in pagefiles:
+    p = p.strip()
     try:
       contents = file(p, mode='rb').read()
     except IOError:
       sys.stderr.write("error reading page file %s\n"% p)
       continue
-    (width, height, xres, yres) = struct.unpack('>IIII', contents[11:27])
+      
+    (width, height, xres, yres, xobj) = loadimage(contents, symd)
 
-    if xres == 0:
-        xres = dpi
-    if yres == 0:
-        yres = dpi
-
-    xobj = Obj({'Type': '/XObject', 'Subtype': '/Image', 'Width':
-        str(width), 'Height': str(height), 'ColorSpace': '/DeviceGray',
-        'BitsPerComponent': '1', 'Filter': '/JBIG2Decode', 'DecodeParms':
-        ' << /JBIG2Globals %d 0 R >>' % symd.id}, contents)
     contents = Obj({}, 'q %f 0 0 %f 0 0 cm /Im1 Do Q' % (float(width * 72) / xres, float(height * 72) / yres))
     resources = Obj({'ProcSet': '[/PDF /ImageB]',
         'XObject': '<< /Im1 %d 0 R >>' % xobj.id})
@@ -177,18 +295,4 @@ if __name__ == '__main__':
     import msvcrt
     msvcrt.setmode(sys.stdout.fileno(), os.O_BINARY)
 
-  if len(sys.argv) == 2:
-    sym = sys.argv[1] + '.sym'
-    pages = glob.glob(sys.argv[1] + '.[0-9]*')
-  elif len(sys.argv) == 1:
-    sym = 'symboltable'
-    pages = glob.glob('page-*')
-  else:
-    usage(sys.argv[0], "wrong number of args!")
-
-  if not os.path.exists(sym):
-    usage(sys.argv[0], "symbol table %s not found!"% sym)
-  elif len(pages) == 0:
-    usage(sys.argv[0], "no pages found!")
-
-  main(sym, pages)
+  main("J.sym")
