@@ -46,7 +46,7 @@ compile() {
   DIR="$1"
   OUT="$2"
 
-  (cd "$DIR" && $SOURCE/pdf.py > $OUT) || exit 1
+  (cd "$DIR" && $SOURCE/pdf.py index > $OUT) || exit 1
 }
 
 usage() {

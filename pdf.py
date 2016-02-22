@@ -205,7 +205,7 @@ def loadimage(contents, symd):
 
     return (width, height, xres, yres, xobj)
 
-def main(symboltable='symboltable'):
+def main(symboltable='symboltable', pagefiles=glob.glob('page-*')):
   doc = Doc()
   doc.add_object(Obj({'Type' : '/Catalog', 'Outlines' : ref(2), 'Pages' : ref(3)}))
   doc.add_object(Obj({'Type' : '/Outlines', 'Count': '0'}))
@@ -213,9 +213,6 @@ def main(symboltable='symboltable'):
   doc.add_object(pages)
   symd = doc.add_object(Obj({}, file(symboltable, 'rb').read()))
   page_objs = []
-
-  with open('index', 'r') as index:
-    pagefiles=index.readlines()
 
   for p in pagefiles:
     p = p.strip()
@@ -249,10 +246,30 @@ def usage(script, msg):
   sys.stderr.write("Usage: %s [file_basename] > out.pdf\n"% script)
   sys.exit(1)
 
-
 if __name__ == '__main__':
   if sys.platform == "win32":
     import msvcrt
     msvcrt.setmode(sys.stdout.fileno(), os.O_BINARY)
 
-  main("J.sym")
+  if len(sys.argv) == 2:
+    if sys.argv[1] == "index":
+      with open('index', 'r') as index:
+        pages = index.readlines()
+      sym = "J.sym"
+    else:
+      sym = sys.argv[1] + '.sym'
+      pages = glob.glob(sys.argv[1] + '.[0-9]*')
+      pages.sort()
+  elif len(sys.argv) == 1:
+    sym = 'symboltable'
+    pages = glob.glob('page-*')
+    pages.sort()
+  else:
+    usage(sys.argv[0], "wrong number of args!")
+
+  if not os.path.exists(sym):
+    usage(sys.argv[0], "symbol table %s not found!"% sym)
+  elif len(pages) == 0:
+    usage(sys.argv[0], "no pages found!")
+    
+  main(sym, pages)
