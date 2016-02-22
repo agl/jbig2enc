@@ -10,7 +10,7 @@ DI=150
 extract() {
   FILE=$1
   
-  DIR=`mktemp -d ./${FILE%.*}.XXXX`
+  DIR=`mktemp -d "./${FILE%.*}.XXXX"`
 
   PNG="$DIR/${FILE%.*}-%04d.png"
   convert -units PixelsPerInch -density $DT "$FILE" "$PNG" || exit 1
@@ -46,7 +46,7 @@ compile() {
   DIR="$1"
   OUT="$2"
 
-  (cd "$DIR" && $SOURCE/pdf.py index > $OUT) || exit 1
+  (cd "$DIR" && $SOURCE/pdf.py index) > $OUT || exit 1
 }
 
 usage() {
@@ -113,7 +113,7 @@ for f in "$@"; do
     exit 1
   fi
   DIR=`extract "$f"`
-  process "$DIR" || exit 1
-  compile "$DIR" "$f" || exit 1
+  (process "$DIR") || exit 1
+  (compile "$DIR" "$f") || exit 1
   rm -rf "$DIR" || exit 1
 done
