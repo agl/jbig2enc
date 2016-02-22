@@ -46,7 +46,7 @@ compile() {
   DIR="$1"
   OUT="$2"
 
-  (cd "$DIR" && $SOURCE/pdf.py index) > $OUT || exit 1
+  (cd "$DIR" && $SOURCE/pdf.py index) > "$OUT" || exit 1
 }
 
 usage() {
@@ -112,7 +112,7 @@ for f in "$@"; do
     echo "file not found: $f"
     exit 1
   fi
-  DIR=`extract "$f"`
+  DIR=`extract "$f"` || exit 1
   (process "$DIR") || exit 1
   (compile "$DIR" "$f") || exit 1
   rm -rf "$DIR" || exit 1
