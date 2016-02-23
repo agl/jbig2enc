@@ -8,8 +8,8 @@ DT=300
 DI=150
 
 extract() {
-  FILE=$1
-  
+  FILE="$1"
+
   DIR=`mktemp -d "./${FILE%.*}.XXXX"`
 
   PNG="$DIR/${FILE%.*}-%04d.png"
@@ -25,17 +25,18 @@ force() {
   declare -a files
   files=(*.png)
 
-  tLen=${#files[@]}
-  let tLen=tLen-1
+  last=${#files[@]}
+  let last=last-1
 
-  for (( i=0; i<=${tLen}; i++ )); do
+  for (( i=0; i<=${last}; i++ )); do
     if [ "$KEEPFIRST" == "YES" ] && [ $i -eq 0 ]; then
       continue
     fi
-    if [ "$KEEPLAST" == "YES" ] && [ $i -eq $tLen ]; then
+    if [ "$KEEPLAST" == "YES" ] && [ $i -eq $last ]; then
       continue
     fi
     f=${files[$i]}
+    [ "$VERBOSE" == "YES" ] && echo "monochrome: $f"
     convert "$f" -monochrome "$f" || exit 1
   done
 }
@@ -47,6 +48,7 @@ process() {
 
   COUNTER=0
   for f in *.png; do
+    [ "$VERBOSE" == "YES" ] && echo "index: $f"
     TYPE=`file "$f"`
     if [[ "$TYPE" =~ "1-bit" ]]; then
       JB2="${f%.*}.jb2"
@@ -61,7 +63,9 @@ process() {
     fi
   done
 
-  jbig2 -v -b J -d -p -s *.jb2 || exit 1
+  [ "$VERBOSE" == "YES" ] && V="-v"
+
+  jbig2 $V -b J -d -p -s *.jb2 || exit 1
   rm *.jb2 || exit 1
 }
 
@@ -74,6 +78,21 @@ compile() {
 
 usage() {
   echo "Usage $0: large.pdf"
+  echo ""
+  echo "Steps:"
+  echo -e "\t-e|--extract\tProduce 'extract' pdf images to directory and exit"
+  echo -e "\t-p|--process\tProduce 'process' identify images and create jb2 data and exit"
+  echo -e "\t-c|--compile\tProduce 'compile' step. Create pdf from directory"
+  echo -e "\t-m|--monochrome\tProduce 'monochrome' step. Monochrome all images in target directory"
+  echo -e "\t\t-kf|--keepfirst\tDo not monochrome first image in list (usually cover jpg)"
+  echo -e "\t\t-kl|--keeplast\tDo not monochrome last image in list (usually cover jpg)"
+  echo ""
+  echo "Options:"
+  echo -e "\t-dt|--density_text\tSet DPI for text contaned images (300)"
+  echo -e "\t-di|--density_image\tSet DPI for image contaned images (150)"
+  echo -e "\t-f|--force\tForce convert images to monochrome"
+  echo -e "\t\t-kf|--keepfirst\tDo not monochrome first image in list (usually cover jpg)"
+  echo -e "\t\t-kl|--keeplast\tDo not monochrome last image in list (usually cover jpg)"
 }
 
 packages() {
@@ -108,6 +127,9 @@ case $key in
     ;;
     -kl|--keeplast)
     KEEPLAST=YES
+    ;;
+    -v|--verbose)
+    VERBOSE=YES
     ;;
     -dt|--density_text)
     DT="$2"
@@ -148,11 +170,17 @@ if [ "$MONOCHROME" == "YES" ]; then
   exit 0
 fi
 
+if [ -z "$@" ]; then
+  usage
+  exit 0
+fi
+
 for f in "$@"; do
   if [ ! -f "$f" ]; then
     echo "file not found: $f"
     exit 1
   fi
+  [ "$VERBOSE" == "YES" ] && echo "extract: $f"
   DIR=`extract "$f"` || exit 1
   if [ "$FORCE" == "YES" ]; then
     (force "$DIR") || exit 1 
