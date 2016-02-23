@@ -220,7 +220,7 @@ def main(symboltable='symboltable', pagefiles=glob.glob('page-*')):
       contents = file(p, mode='rb').read()
     except IOError:
       sys.stderr.write("error reading page file %s\n"% p)
-      continue
+      sys.exit(1)
       
     (width, height, xres, yres, xobj) = loadimage(contents, symd)
 
