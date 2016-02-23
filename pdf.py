@@ -140,7 +140,7 @@ def load_image(contents, symd):
     pos = 0
     pos += 2
     b = contents[pos]
-    while (b and ord(b) != 0xDA):
+    while (ord(b) != 0xDA):
         while (ord(b) != 0xFF):
           b = contents[pos]
           pos = pos + 1
@@ -156,8 +156,7 @@ def load_image(contents, symd):
             t = ord(contents[pos])
             break
         else:
-            s = int(struct.unpack(">H", contents[pos:pos+2])[0])-2
-            pos += s
+            pos += int(struct.unpack(">H", contents[pos:pos+2])[0])
         b = contents[pos]
         pos = pos + 1
 
