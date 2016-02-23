@@ -73,6 +73,8 @@ compile() {
   DIR="$1"
   OUT="$2"
 
+  [ "$VERBOSE" == "YES" ] && echo "compile: $OUT"
+
   (cd "$DIR" && $SOURCE/pdf.py index) > "$OUT" || exit 1
 }
 
