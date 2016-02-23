@@ -170,7 +170,7 @@ if [ "$MONOCHROME" == "YES" ]; then
   exit 0
 fi
 
-if [ -z "$@" ]; then
+if [ $# -eq 0 ]; then
   usage
   exit 0
 fi
