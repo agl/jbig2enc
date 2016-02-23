@@ -57,9 +57,9 @@ process() {
       let COUNTER=COUNTER+1
     else
       JPX="${f%.*}.jpg"
-      convert -units PixelsPerInch -density $DT "$f" -resample $DIx$DI -density $DI "$JPX" || exit 1
+      convert -units PixelsPerInch -density $DT "$f" -background white -alpha remove -resample $DIx$DI -density $DI "$JPX" || exit 1
       rm "$f" || exit 1
-      echo ${JPX} >> index
+      echo "${JPX}" >> index
     fi
   done
 

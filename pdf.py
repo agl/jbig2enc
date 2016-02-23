@@ -135,7 +135,7 @@ def ref(x):
 #    - sampling factors (bit 0-3 vert., 4-7 hor.)
 #    - quantization table number
 
-def loadimage(contents, symd):
+def load_image(contents, symd):
   if contents[6:10] == "JFIF":
     pos = 0
     pos += 2
@@ -222,7 +222,7 @@ def main(symboltable='symboltable', pagefiles=glob.glob('page-*')):
       sys.stderr.write("error reading page file %s\n"% p)
       sys.exit(1)
       
-    (width, height, xres, yres, xobj) = loadimage(contents, symd)
+    (width, height, xres, yres, xobj) = load_image(contents, symd)
 
     contents = Obj({}, 'q %f 0 0 %f 0 0 cm /Im1 Do Q' % (float(width * 72) / xres, float(height * 72) / yres))
     resources = Obj({'ProcSet': '[/PDF /ImageB]',
