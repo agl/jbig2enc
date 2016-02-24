@@ -146,7 +146,13 @@ def ref(x):
 #   in pixels
 # density_type
 #   1 - Pixels per inch (2.54 cm)
-#
+# dpi_x, dpi_y
+#   density pixels per inch
+# color_space
+#   1 - grey scaled
+#   3 - RGB
+# bits_per_component
+#   8 - bits per pixel
 def get_jpg_props(buf):
   density_type = ord(buf[0x0d])
   xres, yres = struct.unpack(">HH", buf[0x0e:0x12])
