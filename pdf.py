@@ -197,7 +197,7 @@ def load_image(contents, symd):
     if color_space == 0x03:
       color_space_pdf = "/DeviceRGB"
 
-    # sys.stderr.write("JP: %d %s %d %d %s %d %d\n" % (bpc, tt, width, height, str(len(contents)), xres, yres))
+    # sys.stderr.write("JP: %d %s %d %d %s %d %d\n" % (bpc, color_space_pdf, width, height, str(len(contents)), xres, yres))
     
     if xres == 0:
         xres = DPI
