@@ -28,6 +28,8 @@ import os
 # Run ./jbig2 -s -p <other options> image1.jpeg image1.jpeg ...
 # python pdf.py output > out.pdf
 
+DPI = 72
+
 class Ref:
   def __init__(self, x):
     self.x = x
@@ -135,67 +137,83 @@ def ref(x):
 #    - sampling factors (bit 0-3 vert., 4-7 hor.)
 #    - quantization table number
 
+#
+# python get jpeg properties function
+#
+# return (width, height, density_type, dpi_x, dpi_y, bits_per_component, color_space)
+#
+# width, height
+#   in pixels
+# density_type
+#   1 - Pixels per inch (2.54 cm)
+#
+def get_jpg_props(buf):
+  density_type = ord(buf[0x0d])
+  xres, yres = struct.unpack(">HH", buf[0x0e:0x12])
+
+  pos = 0
+  pos += 2
+  b = buf[pos]
+  while (ord(b) != 0xDA):
+    while (ord(b) != 0xFF):
+      b = buf[pos]
+      pos = pos + 1
+    while (ord(b) == 0xFF):
+      b = buf[pos]
+      pos = pos + 1
+    if (ord(b) >= 0xC0 and ord(b) <= 0xC3):
+        pos += 2
+        bits_per_component = ord(buf[pos])
+        pos += 1
+        h, w = struct.unpack(">HH", buf[pos:pos+4])
+        pos += 4
+        color_space = ord(buf[pos])
+        break
+    else:
+        pos += int(struct.unpack(">H", buf[pos:pos+2])[0])
+    b = buf[pos]
+    pos = pos + 1
+    
+  return (int(w), int(h), density_type, xres, yres, bits_per_component, color_space)
+
+def get_jb2_props(buf):
+  (width, height, xres, yres) = struct.unpack('>IIII', buf[11:27])
+  return (width, height, xres, yres)
+
 def load_image(contents, symd):
   if contents[6:10] == "JFIF":
-    pos = 0
-    pos += 2
-    b = contents[pos]
-    while (ord(b) != 0xDA):
-        while (ord(b) != 0xFF):
-          b = contents[pos]
-          pos = pos + 1
-        while (ord(b) == 0xFF):
-          b = contents[pos]
-          pos = pos + 1
-        if (ord(b) >= 0xC0 and ord(b) <= 0xC3):
-            pos += 2
-            comps = ord(contents[pos])
-            pos += 1
-            h, w = struct.unpack(">HH", contents[pos:pos+4])
-            pos += 4
-            t = ord(contents[pos])
-            break
-        else:
-            pos += int(struct.unpack(">H", contents[pos:pos+2])[0])
-        b = contents[pos]
-        pos = pos + 1
+    width, height, density_type, xres, yres, bpc, color_space = get_jpg_props(contents)
 
-    width = int(w)
-    height = int(h)
+    if density_type != 0x01: # Pixels per inch (2.54 cm)
+      raise "wrong density"
+    if color_space == 0x01:
+      color_space_pdf = "/DeviceGray"
+    if color_space == 0x03:
+      color_space_pdf = "/DeviceRGB"
 
-    dens = contents[0x0d]
-    if ord(dens) != 0x01: # Pixels per inch (2.54 cm)
-      raise "wrong dens"
-    xres, yres = struct.unpack(">HH", contents[0x0e:0x12])
-    
-    if t == 0x01:
-      tt = "/DeviceGray"
-    if t == 0x03:
-      tt = "/DeviceRGB"
-
-    # sys.stderr.write("JP: %d %s %d %d %s %d %d\n" % (comps, tt, width, height, str(len(contents)), xres, yres))
+    # sys.stderr.write("JP: %d %s %d %d %s %d %d\n" % (bpc, tt, width, height, str(len(contents)), xres, yres))
     
     if xres == 0:
-        xres = 150
+        xres = DPI
     if yres == 0:
-        yres = 150
+        yres = DPI
 
     xobj = Obj({'Type': '/XObject', 'Subtype': '/Image',
         'Width': str(width),
         'Height': str(height),
-        'ColorSpace': tt,
-        'BitsPerComponent': str(comps),
+        'ColorSpace': color_space_pdf,
+        'BitsPerComponent': str(bpc),
         'Length': str(len(contents)),
         'Filter': '/DCTDecode'}, contents)
 
     return (width, height, xres, yres, xobj)
   else:
-    (width, height, xres, yres) = struct.unpack('>IIII', contents[11:27])
+    (width, height, xres, yres) = get_jb2_props(contents)
 
     if xres == 0:
-        xres = 300
+        xres = DPI
     if yres == 0:
-        yres = 300
+        yres = DPI
 
     xobj = Obj({'Type': '/XObject', 'Subtype': '/Image', 'Width':
         str(width), 'Height': str(height), 'ColorSpace': '/DeviceGray',
@@ -214,13 +232,11 @@ def main(symboltable='symboltable', pagefiles=glob.glob('page-*')):
   page_objs = []
 
   for p in pagefiles:
-    p = p.strip()
     try:
       contents = file(p, mode='rb').read()
     except IOError:
-      sys.stderr.write("error reading page file %s\n"% p)
-      sys.exit(1)
-      
+      raise ("error reading page file %s\n" % p)
+
     (width, height, xres, yres, xobj) = load_image(contents, symd)
 
     contents = Obj({}, 'q %f 0 0 %f 0 0 cm /Im1 Do Q' % (float(width * 72) / xres, float(height * 72) / yres))
@@ -253,7 +269,7 @@ if __name__ == '__main__':
   if len(sys.argv) == 2:
     if sys.argv[1] == "index":
       with open('index', 'r') as index:
-        pages = index.readlines()
+        pages = index.read().splitlines()
       sym = "J.sym"
     else:
       sym = sys.argv[1] + '.sym'
