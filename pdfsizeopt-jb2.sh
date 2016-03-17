@@ -125,9 +125,11 @@ case $key in
     MONOCHROME=YES
     ;;
     -kf|--keepfirst)
+    FORCE=YES
     KEEPFIRST=YES
     ;;
     -kl|--keeplast)
+    FORCE=YES
     KEEPLAST=YES
     ;;
     -v|--verbose)
