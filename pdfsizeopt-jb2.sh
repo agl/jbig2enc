@@ -17,7 +17,7 @@ extract() {
   echo "$DIR"
 }
 
-force() {
+monochrome() {
   DIR="$1"
 
   cd "$DIR" || exit 1
@@ -85,14 +85,11 @@ usage() {
   echo -e "\t-e|--extract\tProduce 'extract' pdf images to directory and exit"
   echo -e "\t-p|--process\tProduce 'process' identify images and create jb2 data and exit"
   echo -e "\t-c|--compile\tProduce 'compile' step. Create pdf from directory"
-  echo -e "\t-m|--monochrome\tProduce 'monochrome' step. Monochrome all images in target directory"
-  echo -e "\t\t-kf|--keepfirst\tDo not monochrome first image in list (usually cover jpg)"
-  echo -e "\t\t-kl|--keeplast\tDo not monochrome last image in list (usually cover jpg)"
   echo ""
   echo "Options:"
   echo -e "\t-dt|--density_text\tSet DPI for text contaned images (300)"
   echo -e "\t-di|--density_image\tSet DPI for image contaned images (150)"
-  echo -e "\t-f|--force\tForce convert images to monochrome"
+  echo -e "\t-m|--monochrome\tForce convert images to monochrome"
   echo -e "\t\t-kf|--keepfirst\tDo not monochrome first image in list (usually cover jpg)"
   echo -e "\t\t-kl|--keeplast\tDo not monochrome last image in list (usually cover jpg)"
 }
@@ -118,18 +115,15 @@ case $key in
     -c|--compile)
     COMPILE=YES
     ;;
-    -f|--force)
-    FORCE=YES
-    ;;
     -m|--monochrome)
     MONOCHROME=YES
     ;;
     -kf|--keepfirst)
-    FORCE=YES
+    MONOCHROME=YES
     KEEPFIRST=YES
     ;;
     -kl|--keeplast)
-    FORCE=YES
+    MONOCHROME=YES
     KEEPLAST=YES
     ;;
     -v|--verbose)
@@ -169,11 +163,6 @@ if [ "$COMPILE" == "YES" ];then
   exit 0
 fi
 
-if [ "$MONOCHROME" == "YES" ]; then
-  (force "$@") || exit 1
-  exit 0
-fi
-
 if [ $# -eq 0 ]; then
   usage
   exit 0
@@ -186,8 +175,8 @@ for f in "$@"; do
   fi
   [ "$VERBOSE" == "YES" ] && echo "extract: $f"
   DIR=`extract "$f"` || exit 1
-  if [ "$FORCE" == "YES" ]; then
-    (force "$DIR") || exit 1 
+  if [ "$MONOCHROME" == "YES" ]; then
+    (monochrome "$DIR") || exit 1 
   fi
   (process "$DIR") || exit 1
   (compile "$DIR" "$f") || exit 1
