@@ -6,6 +6,10 @@ SOURCE="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 DT=300
 # DPI for pictures
 DI=150
+# default convert images to monochrome
+MONOCHROME=YES
+# default verbose
+VERBOSE=YES
 
 extract() {
   FILE="$1"
@@ -89,7 +93,7 @@ usage() {
   echo "Options:"
   echo -e "\t-dt|--density_text\tSet DPI for text contaned images (300)"
   echo -e "\t-di|--density_image\tSet DPI for image contaned images (150)"
-  echo -e "\t-m|--monochrome\tForce convert images to monochrome"
+  echo -e "\t-k|--keep\tDo not perfome convert images to monochrome step"
   echo -e "\t\t-kf|--keepfirst\tDo not monochrome first image in list (usually cover jpg)"
   echo -e "\t\t-kl|--keeplast\tDo not monochrome last image in list (usually cover jpg)"
 }
@@ -115,19 +119,17 @@ case $key in
     -c|--compile)
     COMPILE=YES
     ;;
-    -m|--monochrome)
-    MONOCHROME=YES
+    -k|--keep)
+    MONOCHROME=NO
     ;;
     -kf|--keepfirst)
-    MONOCHROME=YES
     KEEPFIRST=YES
     ;;
     -kl|--keeplast)
-    MONOCHROME=YES
     KEEPLAST=YES
     ;;
-    -v|--verbose)
-    VERBOSE=YES
+    -q|--quiet)
+    VERBOSE=NO
     ;;
     -dt|--density_text)
     DT="$2"
