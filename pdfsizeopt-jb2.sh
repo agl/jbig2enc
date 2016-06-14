@@ -15,8 +15,9 @@ extract() {
   FILE="$1"
 
   DIR=`mktemp -d "${FILE%.*}.XXXX"`
+  NAME=$(basename "$FILE")
 
-  PNG="$DIR/${FILE%.*}-%04d.png"
+  PNG="$DIR/${NAME%.*}-%04d.png"
   convert -units PixelsPerInch -density $DT "$FILE" "$PNG" || exit 1
   echo "$DIR"
 }
