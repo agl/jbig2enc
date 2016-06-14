@@ -6,15 +6,15 @@ SOURCE="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 DT=300
 # DPI for pictures
 DI=150
-# default convert images to monochrome
-MONOCHROME=YES
+# default convert images to monochrome, YES = keep original, or NO = convert to monochrome
+KEEP=NO
 # default verbose
 VERBOSE=YES
 
 extract() {
   FILE="$1"
 
-  DIR=`mktemp -d "./${FILE%.*}.XXXX"`
+  DIR=`mktemp -d "${FILE%.*}.XXXX"`
 
   PNG="$DIR/${FILE%.*}-%04d.png"
   convert -units PixelsPerInch -density $DT "$FILE" "$PNG" || exit 1
@@ -87,6 +87,7 @@ usage() {
   echo ""
   echo "Steps:"
   echo -e "\t-e|--extract\tProduce 'extract' pdf images to directory and exit"
+  echo -e "\t-m|--monochrome\tProduce 'monochrome' step"
   echo -e "\t-p|--process\tProduce 'process' identify images and create jb2 data and exit"
   echo -e "\t-c|--compile\tProduce 'compile' step. Create pdf from directory"
   echo ""
@@ -113,6 +114,9 @@ case $key in
     -e|--extract)
     EXTRACT=YES
     ;;
+    -m|--monochrome)
+    MONOCHROME=YES
+    ;;
     -p|--process)
     PROCESS=YES
     ;;
@@ -120,7 +124,7 @@ case $key in
     COMPILE=YES
     ;;
     -k|--keep)
-    MONOCHROME=NO
+    KEEP=YES
     ;;
     -kf|--keepfirst)
     KEEPFIRST=YES
@@ -155,6 +159,11 @@ if [ "$EXTRACT" == "YES" ];then
   exit 0
 fi
 
+if [ "$MONOCHROME" == "YES" ];then
+  monochrome "$@" || exit 1
+  exit 0
+fi
+
 if [ "$PROCESS" == "YES" ];then
   process "$@" || exit 1
   exit 0
@@ -177,7 +186,7 @@ for f in "$@"; do
   fi
   [ "$VERBOSE" == "YES" ] && echo "extract: $f"
   DIR=`extract "$f"` || exit 1
-  if [ "$MONOCHROME" == "YES" ]; then
+  if [ "$KEEP" == "NO" ]; then
     (monochrome "$DIR") || exit 1 
   fi
   (process "$DIR") || exit 1
