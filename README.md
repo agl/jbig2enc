@@ -1,5 +1,3 @@
-Welcome, gentle reader.
-
 This is an encoder for [JBIG2](fcd14492.pdf).
 
 JBIG2 encodes bi-level (1 bpp) images using a number of clever tricks to get
@@ -15,24 +13,30 @@ It uses the (Apache-ish licensed) Leptonica library:
 
 You'll need version 1.68.
 
-KNOWN BUGS:
+## Known bugs
 
 The refinement coding causes Acrobat to crash. It's not known if this is a bug
 in Acrobat, though it may well be.
 
 
-USAGE:
+## Usage
 
-See the jbig2enc.h header for the high level API, or the jbig2 program for an
+See the `jbig2enc.h` header for the high level API, or the `jbig2` program for an
 example of usage:
 
+```
 $ jbig2 -s -p -v *.jpg && pdf.py output >out.pdf
+```
 
 to encode jbig2 files for pdf creation.
 If you want to encode an image and then view output first to include in pdf
 
+```
 $ jbig2 -s -S -p -v -O out.png *.jpg
+```
 
 If you want to encode an image as jbig2 (can be view in STDU Viewer) run:
 
-$ jbig2 -s feyn.tif >feyn.jb2
+```
+$ jbig2 -s feyn.tif &gt;feyn.jb2
+```
