@@ -78,9 +78,9 @@ AC_CHECK_LIB([lept], [findFileFormatStream], [], [
 			exit -1
 			])
 AC_CHECK_FUNCS(expandBinaryPower2Low,,)
-# test for function - it should detect leptonica dependecies
+# test for function - it should detect leptonica dependencies
 
-# Check for possible dependancies of leptonica.
+# Check for possible dependencies of leptonica.
 # Because at the moment there is no way how to identify used libraries
 # all presented libraries will be used...
 AC_CHECK_LIB([tiff], TIFFOpen )

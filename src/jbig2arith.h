@@ -179,7 +179,7 @@ void jbig2enc_dealloc(struct jbig2enc_ctx *ctx);
 void jbig2enc_flush(struct jbig2enc_ctx *ctx);
 
 // -----------------------------------------------------------------------------
-// Reset the arithmetic coder back to a init state
+// Reset the arithmetic coder back to an init state
 // -----------------------------------------------------------------------------
 void jbig2enc_reset(struct jbig2enc_ctx *ctx);
 
