@@ -23,7 +23,7 @@ struct jbig2enc_ctx;
 // -----------------------------------------------------------------------------
 // Write a symbol table.
 //
-// symbols: A 2d array. The first dimention is of different classes of symbols.
+// symbols: A 2d array. The first dimension is of different classes of symbols.
 //          Then, for each class, there are all the examples of that class. The
 //          first member of the class is taken as the exemplar.
 // symbol_list: a list of symbols to encode
