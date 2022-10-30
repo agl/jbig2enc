@@ -37,7 +37,7 @@ class Ref:
   def __init__(self, x):
     self.x = x
 
-  def get_bytes(self):
+  def __bytes__(self):
     return b"%d 0 R" % self.x
 
 class Dict:
@@ -45,7 +45,7 @@ class Dict:
     self.d = {}
     self.d.update(values)
 
-  def get_bytes(self):
+  def __bytes__(self):
     s = [b'<< ']
     for (x, y) in self.d.items():
       s.append(b'/%s ' % x.encode())
@@ -69,9 +69,9 @@ class Obj:
     self.id = global_next_id
     global_next_id += 1
 
-  def get_bytes(self):
+  def __bytes__(self):
     s = []
-    s.append(self.d.get_bytes())
+    s.append(bytes(self.d))
     if self.stream is not None:
       s.append(b'stream\n')
       if ispy3 and isinstance(self.stream, str):
@@ -80,7 +80,6 @@ class Obj:
         s.append(self.stream)
       s.append(b'\nendstream\n')
     s.append(b'endobj\n')
-
     return b''.join(s)
 
 class Doc:
@@ -96,7 +95,7 @@ class Doc:
     self.pages.append(o)
     return self.add_object(o)
 
-  def get_bytes(self):
+  def __bytes__(self):
     a = []
     j = [0]
     offsets = []
@@ -108,7 +107,7 @@ class Doc:
     for o in self.objs:
       offsets.append(j[0])
       add(b'%d 0 obj' % o.id)
-      add(o.get_bytes())
+      add(bytes(o))
     xrefstart = j[0]
     a.append(b'xref')
     a.append(b'0 %d' % (len(offsets) + 1))
@@ -134,7 +133,9 @@ def main(symboltable='symboltable', pagefiles=glob.glob('page-*')):
   doc.add_object(Obj({'Type' : '/Outlines', 'Count': '0'}))
   pages = Obj({'Type' : '/Pages'})
   doc.add_object(pages)
-  symd = doc.add_object(Obj({}, open(symboltable, 'rb').read()))
+  if symboltable:
+    with open(symboltable, 'rb') as f:
+      symd = doc.add_object(Obj({}, f.read()))
   page_objs = []
 
   pagefiles.sort()
@@ -145,16 +146,18 @@ def main(symboltable='symboltable', pagefiles=glob.glob('page-*')):
       sys.stderr.write("error reading page file %s\n"% p)
       continue
     (width, height,xres,yres) = struct.unpack('>IIII', contents[11:27])
-    
+
     if xres==0:
       xres=dpi
     if yres==0:
       yres=dpi
 
-    xobj = Obj({'Type': '/XObject', 'Subtype': '/Image', 'Width':
+    lexicon={'Type': '/XObject', 'Subtype': '/Image', 'Width':
         str(width), 'Height': str(height), 'ColorSpace': '/DeviceGray',
-        'BitsPerComponent': '1', 'Filter': '/JBIG2Decode', 'DecodeParms':
-        ' << /JBIG2Globals %d 0 R >>' % symd.id}, contents)
+        'BitsPerComponent': '1', 'Filter': '/JBIG2Decode'}
+    if symboltable:
+        lexicon['DecodeParms']=' << /JBIG2Globals %d 0 R >>' % symd.id
+    xobj = Obj(lexicon, contents)
     contents = Obj({}, 'q %f 0 0 %f 0 0 cm /Im1 Do Q' % (float(width * 72) / xres, float(height * 72) / yres))
     resources = Obj({'ProcSet': '[/PDF /ImageB]',
         'XObject': '<< /Im1 %d 0 R >>' % xobj.id})
@@ -168,19 +171,27 @@ def main(symboltable='symboltable', pagefiles=glob.glob('page-*')):
     pages.d.d['Count'] = str(len(page_objs))
     pages.d.d['Kids'] = '[' + ' '.join([ref(x.id) for x in page_objs]) + ']'
 
-  doc_bytes = doc.get_bytes()
   if ispy2:
-    print(doc_bytes)
+    print(doc)
   elif ispy3:
-    sys.stdout.buffer.write(doc_bytes)
+    sys.stdout.buffer.write(bytes(doc))
   else:
     raise Exception("unexpected python version: %s" % platform.python_version_tuple()[0])
 
 
 def usage(script, msg):
   if msg:
-    sys.stderr.write("%s: %s\n"% (script, msg))
-  sys.stderr.write("Usage: %s [file_basename] > out.pdf\n"% script)
+    sys.stderr.write("%s: %s\n\n" % (script, msg))
+
+  sys.stderr.write("Usage:\n"
+                   "  %s [basename] > out.pdf\n"
+                   "  %s -s [page.jb2]... > out.pdf\n"
+                   "\n"
+                   "  Read symbol table from `basename.sym' and pages from `basename.[0-9]*'\n"
+                   "    if basename not given: symbol table from `symboltable', pages from `page-*'\n"
+                   "\n"
+                   "  -s: standalone mode (no global symbol table)\n"
+                   % (script, script))
   sys.exit(1)
 
 
@@ -189,18 +200,26 @@ if __name__ == '__main__':
     import msvcrt
     msvcrt.setmode(sys.stdout.fileno(), os.O_BINARY)
 
-  if len(sys.argv) == 2:
-    sym = sys.argv[1] + '.sym'
-    pages = glob.glob(sys.argv[1] + '.[0-9]*')
-  elif len(sys.argv) == 1:
-    sym = 'symboltable'
-    pages = glob.glob('page-*')
+  if '-s' in sys.argv:
+    # "standalone" .jb2 mode
+    sym = False
+    pages = sys.argv[1:]
+    pages.remove('-s')
+    if len(pages) == 0:
+      usage(sys.argv[0], "no pages found!")
   else:
-    usage(sys.argv[0], "wrong number of args!")
+    if len(sys.argv) == 2:
+      sym = sys.argv[1] + '.sym'
+      pages = glob.glob(sys.argv[1] + '.[0-9]*')
+    elif len(sys.argv) == 1:
+      sym = 'symboltable'
+      pages = glob.glob('page-*')
+    else:
+      usage(sys.argv[0], "wrong number of args!")
 
-  if not os.path.exists(sym):
-    usage(sys.argv[0], "symbol table %s not found!"% sym)
-  elif len(pages) == 0:
-    usage(sys.argv[0], "no pages found!")
+    if not os.path.exists(sym):
+      usage(sys.argv[0], "symbol table %s not found!"% sym)
+    elif len(pages) == 0:
+      usage(sys.argv[0], "no pages found!")
 
   main(sym, pages)
