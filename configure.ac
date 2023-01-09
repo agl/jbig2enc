@@ -73,7 +73,7 @@ AC_CONFIG_COMMANDS([libtool-rpath-patch],
 	fi],
 [libtool_patch_use_rpath=$enable_rpath])
 
-AC_CHECK_LIB([lept], [findFileFormatStream], [], [
+AC_CHECK_LIB([leptonica], [findFileFormatStream], [], [
 			echo "Error! Leptonica not detected."
 			exit -1
 			])
