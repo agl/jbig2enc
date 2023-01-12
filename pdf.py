@@ -22,6 +22,7 @@ import re
 import struct
 import glob
 import os
+import platform
 
 # This is a very simple script to make a PDF file out of the output of a
 # multipage symbol compression.
@@ -29,27 +30,30 @@ import os
 # python pdf.py output > out.pdf
 
 dpi = 72
+ispy2 = platform.python_version_tuple()[0]=='2'
+ispy3 = platform.python_version_tuple()[0]=='3'
 
 class Ref:
   def __init__(self, x):
     self.x = x
-  def __str__(self):
-    return "%d 0 R" % self.x
+
+  def __bytes__(self):
+    return b"%d 0 R" % self.x
 
 class Dict:
   def __init__(self, values = {}):
     self.d = {}
     self.d.update(values)
 
-  def __str__(self):
-    s = ['<< ']
+  def __bytes__(self):
+    s = [b'<< ']
     for (x, y) in self.d.items():
-      s.append('/%s ' % x)
-      s.append(str(y))
-      s.append("\n")
-    s.append(">>\n")
+      s.append(b'/%s ' % x.encode())
+      s.append(y.encode())
+      s.append(b"\n")
+    s.append(b">>\n")
 
-    return ''.join(s)
+    return b''.join(s)
 
 global_next_id = 1
 
@@ -65,16 +69,18 @@ class Obj:
     self.id = global_next_id
     global_next_id += 1
 
-  def __str__(self):
+  def __bytes__(self):
     s = []
-    s.append(str(self.d))
+    s.append(bytes(self.d))
     if self.stream is not None:
-      s.append('stream\n')
-      s.append(self.stream)
-      s.append('\nendstream\n')
-    s.append('endobj\n')
-
-    return ''.join(s)
+      s.append(b'stream\n')
+      if ispy3 and isinstance(self.stream, str):
+        s.append(self.stream.encode())
+      else:
+        s.append(self.stream)
+      s.append(b'\nendstream\n')
+    s.append(b'endobj\n')
+    return b''.join(s)
 
 class Doc:
   def __init__(self):
@@ -89,7 +95,7 @@ class Doc:
     self.pages.append(o)
     return self.add_object(o)
 
-  def __str__(self):
+  def __bytes__(self):
     a = []
     j = [0]
     offsets = []
@@ -97,27 +103,26 @@ class Doc:
     def add(x):
       a.append(x)
       j[0] += len(x) + 1
-    add('%PDF-1.4')
+    add(b'%PDF-1.4')
     for o in self.objs:
       offsets.append(j[0])
-      add('%d 0 obj' % o.id)
-      add(str(o))
+      add(b'%d 0 obj' % o.id)
+      add(bytes(o))
     xrefstart = j[0]
-    a.append('xref')
-    a.append('0 %d' % (len(offsets) + 1))
-    a.append('0000000000 65535 f ')
+    a.append(b'xref')
+    a.append(b'0 %d' % (len(offsets) + 1))
+    a.append(b'0000000000 65535 f ')
     for o in offsets:
-      a.append('%010d 00000 n ' % o)
-    a.append('')
-    a.append('trailer')
-    a.append('<< /Size %d\n/Root 1 0 R >>' % (len(offsets) + 1))
-    a.append('startxref')
-    a.append(str(xrefstart))
-    a.append('%%EOF')
+      a.append(b'%010d 00000 n ' % o)
+    a.append(b'')
+    a.append(b'trailer')
+    a.append(b'<< /Size %d\n/Root 1 0 R >>' % (len(offsets) + 1))
+    a.append(b'startxref')
+    a.append(b'%d' % xrefstart)
+    a.append(b'%%EOF')
 
     # sys.stderr.write(str(offsets) + "\n")
-
-    return '\n'.join(a)
+    return b'\n'.join(a)
 
 def ref(x):
   return '%d 0 R' % x
@@ -128,27 +133,31 @@ def main(symboltable='symboltable', pagefiles=glob.glob('page-*')):
   doc.add_object(Obj({'Type' : '/Outlines', 'Count': '0'}))
   pages = Obj({'Type' : '/Pages'})
   doc.add_object(pages)
-  symd = doc.add_object(Obj({}, file(symboltable, 'rb').read()))
+  if symboltable:
+    with open(symboltable, 'rb') as f:
+      symd = doc.add_object(Obj({}, f.read()))
   page_objs = []
 
   pagefiles.sort()
   for p in pagefiles:
     try:
-      contents = file(p, mode='rb').read()
+      contents = open(p, "rb").read()
     except IOError:
       sys.stderr.write("error reading page file %s\n"% p)
       continue
-    (width, height, xres, yres) = struct.unpack('>IIII', contents[11:27])
+    (width, height,xres,yres) = struct.unpack('>IIII', contents[11:27])
 
-    if xres == 0:
-        xres = dpi
-    if yres == 0:
-        yres = dpi
+    if xres==0:
+      xres=dpi
+    if yres==0:
+      yres=dpi
 
-    xobj = Obj({'Type': '/XObject', 'Subtype': '/Image', 'Width':
+    lexicon={'Type': '/XObject', 'Subtype': '/Image', 'Width':
         str(width), 'Height': str(height), 'ColorSpace': '/DeviceGray',
-        'BitsPerComponent': '1', 'Filter': '/JBIG2Decode', 'DecodeParms':
-        ' << /JBIG2Globals %d 0 R >>' % symd.id}, contents)
+        'BitsPerComponent': '1', 'Filter': '/JBIG2Decode'}
+    if symboltable:
+        lexicon['DecodeParms']=' << /JBIG2Globals %d 0 R >>' % symd.id
+    xobj = Obj(lexicon, contents)
     contents = Obj({}, 'q %f 0 0 %f 0 0 cm /Im1 Do Q' % (float(width * 72) / xres, float(height * 72) / yres))
     resources = Obj({'ProcSet': '[/PDF /ImageB]',
         'XObject': '<< /Im1 %d 0 R >>' % xobj.id})
@@ -162,33 +171,55 @@ def main(symboltable='symboltable', pagefiles=glob.glob('page-*')):
     pages.d.d['Count'] = str(len(page_objs))
     pages.d.d['Kids'] = '[' + ' '.join([ref(x.id) for x in page_objs]) + ']'
 
-  print str(doc)
+  if ispy2:
+    print(doc)
+  elif ispy3:
+    sys.stdout.buffer.write(bytes(doc))
+  else:
+    raise Exception("unexpected python version: %s" % platform.python_version_tuple()[0])
 
 
 def usage(script, msg):
   if msg:
-    sys.stderr.write("%s: %s\n"% (script, msg))
-  sys.stderr.write("Usage: %s [file_basename] > out.pdf\n"% script)
+    sys.stderr.write("%s: %s\n\n" % (script, msg))
+
+  sys.stderr.write("Usage:\n"
+                   "  %s [basename] > out.pdf\n"
+                   "  %s -s [page.jb2]... > out.pdf\n"
+                   "\n"
+                   "  Read symbol table from `basename.sym' and pages from `basename.[0-9]*'\n"
+                   "    if basename not given: symbol table from `symboltable', pages from `page-*'\n"
+                   "\n"
+                   "  -s: standalone mode (no global symbol table)\n"
+                   % (script, script))
   sys.exit(1)
 
 
 if __name__ == '__main__':
-  if sys.platform == "win32":
+  if ispy2 and sys.platform == "win32":
     import msvcrt
     msvcrt.setmode(sys.stdout.fileno(), os.O_BINARY)
 
-  if len(sys.argv) == 2:
-    sym = sys.argv[1] + '.sym'
-    pages = glob.glob(sys.argv[1] + '.[0-9]*')
-  elif len(sys.argv) == 1:
-    sym = 'symboltable'
-    pages = glob.glob('page-*')
+  if '-s' in sys.argv:
+    # "standalone" .jb2 mode
+    sym = False
+    pages = sys.argv[1:]
+    pages.remove('-s')
+    if len(pages) == 0:
+      usage(sys.argv[0], "no pages found!")
   else:
-    usage(sys.argv[0], "wrong number of args!")
+    if len(sys.argv) == 2:
+      sym = sys.argv[1] + '.sym'
+      pages = glob.glob(sys.argv[1] + '.[0-9]*')
+    elif len(sys.argv) == 1:
+      sym = 'symboltable'
+      pages = glob.glob('page-*')
+    else:
+      usage(sys.argv[0], "wrong number of args!")
 
-  if not os.path.exists(sym):
-    usage(sys.argv[0], "symbol table %s not found!"% sym)
-  elif len(pages) == 0:
-    usage(sys.argv[0], "no pages found!")
+    if not os.path.exists(sym):
+      usage(sys.argv[0], "symbol table %s not found!"% sym)
+    elif len(pages) == 0:
+      usage(sys.argv[0], "no pages found!")
 
   main(sym, pages)

@@ -262,7 +262,7 @@ jbig2enc_textregion(struct jbig2enc_ctx *restrict ctx,
     myiota(syms.begin(), syms.end(), 0);
   } else {
     // fill syms with the component numbers from the comps array because ll is
-    // absolutly indexed in this case (absolute: over the whole multi-page
+    // absolutely indexed in this case (absolute: over the whole multi-page
     // document)
     syms = comps;
   }
