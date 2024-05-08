@@ -17,6 +17,8 @@
 
 #include <vector>
 
+#undef verbose
+
 #include <sys/types.h>
 #include <stdio.h>
 #include <stdlib.h>
