@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 # Copyright 2006 Google Inc.
 # Author: agl@imperialviolet.org (Adam Langley)
 #
@@ -128,13 +128,13 @@ def main(symboltable='symboltable', pagefiles=glob.glob('page-*')):
   doc.add_object(Obj({'Type' : '/Outlines', 'Count': '0'}))
   pages = Obj({'Type' : '/Pages'})
   doc.add_object(pages)
-  symd = doc.add_object(Obj({}, file(symboltable, 'rb').read()))
+  symd = doc.add_object(Obj({}, open(symboltable, 'rb').read().decode('latin1')))
   page_objs = []
 
   pagefiles.sort()
   for p in pagefiles:
     try:
-      contents = file(p, mode='rb').read()
+      contents = open(p, mode='rb').read()
     except IOError:
       sys.stderr.write("error reading page file %s\n"% p)
       continue
@@ -148,7 +148,7 @@ def main(symboltable='symboltable', pagefiles=glob.glob('page-*')):
     xobj = Obj({'Type': '/XObject', 'Subtype': '/Image', 'Width':
         str(width), 'Height': str(height), 'ColorSpace': '/DeviceGray',
         'BitsPerComponent': '1', 'Filter': '/JBIG2Decode', 'DecodeParms':
-        ' << /JBIG2Globals %d 0 R >>' % symd.id}, contents)
+        ' << /JBIG2Globals %d 0 R >>' % symd.id}, contents.decode('latin1'))
     contents = Obj({}, 'q %f 0 0 %f 0 0 cm /Im1 Do Q' % (float(width * 72) / xres, float(height * 72) / yres))
     resources = Obj({'ProcSet': '[/PDF /ImageB]',
         'XObject': '<< /Im1 %d 0 R >>' % xobj.id})
@@ -162,7 +162,7 @@ def main(symboltable='symboltable', pagefiles=glob.glob('page-*')):
     pages.d.d['Count'] = str(len(page_objs))
     pages.d.d['Kids'] = '[' + ' '.join([ref(x.id) for x in page_objs]) + ']'
 
-  print str(doc)
+  sys.stdout.buffer.write(str(doc).encode('latin1'))
 
 
 def usage(script, msg):
