@@ -35,8 +35,67 @@ If you want to encode an image and then view output first to include in pdf
 $ jbig2 -s -S -p -v -O out.png *.jpg
 ```
 
-If you want to encode an image as jbig2 (can be view in STDU Viewer) run:
+If you want to encode an image as jbig2 (can be view in [STDU Viewer](http://www.stdutility.com/stduviewer.html) on Windows) run:
 
 ```
 $ jbig2 -s feyn.tif &gt;feyn.jb2
+```
+
+
+Repack large pdf file created with djvu2pdf or tiff2pdf using jbig2 compression for gray scale
+images and keep your pdf title page packed as colored jpeg. Depends on ImageMagic installed.
+
+$ ~/[path]/pdfsizeopt-jb2.sh large.pdf
+
+
+# Building
+
+## Prerequisites
+
+* installed [leptonica](http://www.leptonica.org/) including development parts
+* installed [cmake](https://cmake.org/) or [autotools] (https://www.gnu.org/software/automake/manual/html_node/Autotools-Introduction.html)
+* installed C++ compiller (gcc, clang, MSVC)
+* installed [git](https://git-scm.com/)
+
+
+## Cmake
+
+### Windows
+
+
+*Note*: `cat`, `rm` and `dos2unix` tool are part of [git for windows](https://gitforwindows.org/). You can add them to your path with `set PATH=%PATH%;C:\Program Files\Git\usr\bin`. Adjust path `f:\win64` to your leptonica installation.
+
+```
+"c:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Auxiliary\Build\vcvars64.bat" x64
+set INSTALL_DIR=f:\win64
+set INCLUDE_DIR=f:\win64\include
+set LIB_DIR=f:\win64\lib
+set PATH=%PATH%;%INSTALL_DIR%\bin
+```
+
+### Configuration
+
+```
+git clone --depth 1 https://github.com/agl/jbig2enc
+cmake -Bbuild -DCMAKE_INSTALL_PREFIX=%INSTALL_DIR% -DCMAKE_PREFIX_PATH=%INSTALL_DIR%
+cmake --build build --config Release
+```
+
+### Install
+
+```
+cmake --build build --config Release --target install
+```
+
+### Uninstall
+
+```
+cat build/install_manifest.txt | dos2unix | xargs rm
+
+```
+
+### Clean
+
+```
+rm -r build/*
 ```
