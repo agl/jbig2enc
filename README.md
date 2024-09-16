@@ -25,7 +25,7 @@ See the `jbig2enc.h` header for the high level API, or the `jbig2` program for a
 example of usage:
 
 ```
-$ jbig2 -s -p -v *.jpg && pdf.py output >out.pdf
+$ jbig2 -s -p -v *.jpg && jbig2topdf.py output >out.pdf
 ```
 
 to encode jbig2 files for pdf creation.
@@ -38,5 +38,5 @@ $ jbig2 -s -S -p -v -O out.png *.jpg
 If you want to encode an image as jbig2 (can be view in STDU Viewer) run:
 
 ```
-$ jbig2 -s feyn.tif &gt;feyn.jb2
+$ jbig2 -s feyn.tif > feyn.jb2
 ```

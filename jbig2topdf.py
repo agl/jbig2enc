@@ -26,7 +26,7 @@ import os
 # This is a very simple script to make a PDF file out of the output of a
 # multipage symbol compression.
 # Run ./jbig2 -s -p <other options> image1.jpeg image1.jpeg ...
-# python pdf.py output > out.pdf
+# python jbig2topdf.py output > out.pdf
 
 dpi = 72
 
