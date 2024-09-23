@@ -108,54 +108,45 @@ static const char *segment_dilation_sequence = "d3.3";
 // -----------------------------------------------------------------------------
 // Takes two pix as input, generated from the same original image:
 //   1. pixb   - a binary thresholded image
-//   2. piximg - a full color or grayscale image
+//   2. piximg - a color or grayscale image
 // and segments them by finding the areas that contain color or grayscale
-// graphics, removing those areas from the binary image, and doing the
-// opposite for the full color/grayscale image.  The upshot is that after
-// this routine has been run, the binary image contains only text and the
-// full color image contains only the graphics.
-//
-// Both input images are modified by this procedure.  If no text is found,
-// pixb is set to NULL.  If no graphics is found, piximg is set to NULL.
+// graphics.  These graphics regions are removed from the input binary
+// image, and they are retained in the returned color-or-grayscale image.
+// The upshot is that after this routine has been run:
+//  (a) the input binary image contains only text, and is NULL if there
+//      is no text, and
+//  (b) the returned color-or-grayscale image contains only the graphics,
+//      and is NULL if there is no graphics.
+// The input color-or-grayscale image is not affected.
 //
 // Thanks to Dan Bloomberg for this
 // -----------------------------------------------------------------------------
 
 static PIX*
-segment_image(PIX *pixb, PIX *piximg) {
-  // Make seed and mask, and fill seed into mask
+segment_image(PIX **ppixb, PIX *piximg) {
+  PIX *pixb = *ppixb;
+  // Make a mask over the non-text (graphics) part of the input 1 bpp image
+  // Do this by making a seed and mask, and filling the seed into the mask
   PIX *pixmask4 = pixMorphSequence(pixb, (char *) segment_mask_sequence, 0);
   PIX *pixseed4 = pixMorphSequence(pixb, (char *) segment_seed_sequence, 0);
   PIX *pixsf4 = pixSeedfillBinary(NULL, pixseed4, pixmask4, 8);
   PIX *pixd4 = pixMorphSequence(pixsf4, (char *) segment_dilation_sequence, 0);
-
-  // we want to force the binary mask to be the same size as the
-  // input color image, so we have to do it this way...
-  // is there a better way?
-  // PIX *pixd = pixExpandBinary(pixd4, 4);
-  PIX *pixd;
-#ifdef HAVE_EXPANDBINARYPOWER2LOW
-    pixd = pixCreate(piximg->w, piximg->h, 1);
-    pixCopyResolution(pixd, piximg);
-    expandBinaryPower2Low(pixd->data, pixd->w, pixd->h, pixd->wpl,
-                        pixd4->data, pixd4->w, pixd4->h, pixd4->wpl, 4);
-#else
-    pixd = pixExpandBinaryPower2(pixd4, 4);
-#endif
-  if (verbose) pixInfo(pixd, "mask image: ");
-
+  PIX *pixd = pixExpandBinaryPower2(pixd4, 4);
   pixDestroy(&pixd4);
   pixDestroy(&pixsf4);
   pixDestroy(&pixseed4);
   pixDestroy(&pixmask4);
+  if (verbose) pixInfo(pixd, "mask image: ");
 
+  // Remove pixels over the graphics part from the text mask.  This
+  // side-effects the input binary mask.
   pixSubtract(pixb, pixb, pixd);
 
-  // now see what we got from the segmentation
+  // Set up table to count pixels in the text and graphics masks
   static l_int32 *tab = NULL;
   if (tab == NULL) tab = makePixelSumTab8();
 
-  // if no image portion was found, set the image pointer to NULL and return
+  // If no graphics portion is found, destroy the graphics mask and return NULL
   l_int32  pcount;
   pixCountPixels(pixd, &pcount, tab);
   if (verbose) fprintf(stderr, "pixel count of graphics image: %u\n", pcount);
@@ -164,11 +155,12 @@ segment_image(PIX *pixb, PIX *piximg) {
     return NULL;
   }
 
-  // if no text portion found, set the binary pointer to NULL
+  // If no text portion is found, destroy the input binary image.
   pixCountPixels(pixb, &pcount, tab);
   if (verbose) fprintf(stderr, "pixel count of binary image: %u\n", pcount);
   if (pcount < 100) {
-    pixDestroy(&pixb);
+    pixDestroy(ppixb);  // destroy & set caller handle to NULL
+    pixb = NULL;  // needed later in this function for pixInfo()
   }
 
   PIX *piximg1;
@@ -450,7 +442,9 @@ main(int argc, char **argv) {
     }
 
     if (segment && pixl->d > 1) {
-      PIX *graphics = segment_image(pixt, pixl);
+      // If no text is found, pixt is destroyed
+      PIX *graphics = segment_image(&pixt, pixl);
+      pixDestroy(&pixl);  // if pixt == NULL, the loop exits at 'continue'
       if (graphics) {
         if (verbose)
           pixInfo(graphics, "graphics image:");
@@ -458,10 +452,11 @@ main(int argc, char **argv) {
         asprintf(&filename, "%s.%04d.%s", basename, pageno, img_ext);
         pixWrite(filename, graphics, img_fmt);
         free(filename);
+        pixDestroy(&graphics);
       } else if (verbose) {
         fprintf(stderr, "%s: no graphics found in input image\n", argv[i]);
       }
-      if (! pixt) {
+      if (pixt == NULL) {
         fprintf(stderr, "%s: no text portion found in input image\n", argv[i]);
         i++;
         continue;
