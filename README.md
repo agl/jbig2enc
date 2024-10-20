@@ -25,7 +25,7 @@ See the `jbig2enc.h` header for the high level API, or the `jbig2` program for a
 example of usage:
 
 ```
-$ jbig2 -s -p -v *.jpg && jbig2topdf.py output >out.pdf
+$ jbig2 -s -p -v *.jpg && python3 jbig2topdf.py output >out.pdf
 ```
 
 to encode jbig2 files for pdf creation.
