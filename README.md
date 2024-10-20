@@ -42,12 +42,6 @@ $ jbig2 -s feyn.tif >feyn.jb2
 ```
 
 
-Repack large pdf file created with djvu2pdf or tiff2pdf using jbig2 compression for gray scale
-images and keep your pdf title page packed as colored jpeg. Depends on ImageMagic installed.
-
-$ ~/[path]/pdfsizeopt-jb2.sh large.pdf
-
-
 # Building
 
 ## Prerequisites
