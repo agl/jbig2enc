@@ -82,7 +82,7 @@ install(
   LIBRARY DESTINATION lib
   ARCHIVE DESTINATION lib)
 install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/src/jbig2enc.h" DESTINATION include/)
-install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/pdf.py" DESTINATION bin/)
+install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/jbig2topdf.py" DESTINATION bin/)
 
 # ##############################################################################
 # Programs
