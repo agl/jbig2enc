@@ -153,7 +153,7 @@ print_list(std::list<int> &l) {
 #endif
 
 // -----------------------------------------------------------------------------
-// unite_templates unites templates of the same character to chosen charater
+// unite_templates unites templates of the same character to chosen character
 // template
 //
 //   ctx: structure containing templates of symbols.
@@ -375,7 +375,7 @@ jbig2enc_auto_threshold(struct jbig2ctx *ctx) {
   }
 }
 
-#if defined(HASH_DEBUGING)
+#if defined(HASH_DEBUGGING)
 static void
 print_hash_map(std::map<unsigned int, list<int> > &hashed_templates) {
   std::map<unsigned int, list<int> >::iterator it;
@@ -438,7 +438,7 @@ jbig2enc_auto_threshold_using_hash(struct jbig2ctx *ctx) {
     count_hash(pixa->pix[i], hashed_templates, i);
   }
 
-  #ifdef HASH_DEBUGING
+  #ifdef HASH_DEBUGGING
     print_hash_map(hashed_templates);
   #endif
 
@@ -538,7 +538,7 @@ uint8_t *
 jbig2_pages_complete(struct jbig2ctx *ctx, int *const length) {
   /*
      Graying support - disabled.
-     It's not very clear that graying actaully buys you much extra quality
+     It's not very clear that graying actually buys you much extra quality
      above pick-the-first. Also, aligning the gray glyphs requires the
      original source image.
 
