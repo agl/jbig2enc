@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
-# Copyright 2006 Google Inc.
-# Author: agl@imperialviolet.org (Adam Langley)
+# Copyright 2006 Google Inc. and the AUTHORS
+# Original Author: agl@imperialviolet.org (Adam Langley)
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -24,8 +24,13 @@ from pathlib import Path
 
 # This is a very simple script to make a PDF file out of the output of a
 # multipage symbol compression.
-# Run ./jbig2 -s -p <other options> image1.jpeg image1.jpeg ...
+# Run ./jbig2 -s -p <other options> image1.jpeg image2.jpeg ...
 # python jbig2topdf.py output > out.pdf
+
+# Or for multipage generic region encoding (lossless):
+# Run ./jbig2 -p <other options> image1.jpeg > image1.jb2
+# Repeat for each page required
+# python jbig2topdf.py -s image1.jb2 image2.jb2 ... > out.pdf
 
 
 dpi = 72  # Default DPI value
@@ -129,7 +134,7 @@ def ref(x: int) -> str:
 
 
 def create_pdf(symboltable: str = "symboltable", pagefiles: list = None):
-    """Creates a PDF document from a symbol table and a list of page files."""
+    """Creates a PDF document from a symbol table (if applicable) and a list of page files."""
     if pagefiles is None:
         pagefiles = glob.glob("page-*")
 
@@ -145,12 +150,13 @@ def create_pdf(symboltable: str = "symboltable", pagefiles: list = None):
     doc.add_object(pages_obj)
 
     # Read the symbol table
-    try:
-        with open(symboltable, "rb") as sym_file:
-            symd = doc.add_object(Obj({}, sym_file.read().decode("latin1")))
-    except IOError:
-        sys.stderr.write(f"Error reading symbol table: {symboltable}\n")
-        return
+    if symboltable is not None:
+        try:
+            with open(symboltable, "rb") as sym_file:
+                symd = doc.add_object(Obj({}, sym_file.read().decode("latin1")))
+        except IOError:
+            sys.stderr.write(f"Error reading symbol table: {symboltable}\n")
+            return
 
     page_objs = []
     pagefiles.sort()
@@ -174,17 +180,22 @@ def create_pdf(symboltable: str = "symboltable", pagefiles: list = None):
         yres = yres or dpi
 
         # Create XObject (image) for the page
+        xobj_d = {
+            "Type": "/XObject",
+            "Subtype": "/Image",
+            "Width": str(width),
+            "Height": str(height),
+            "ColorSpace": "/DeviceGray",
+            "BitsPerComponent": "1",
+            "Filter": "/JBIG2Decode",
+        }
+
+        if symboltable is not None:
+            # Write the symbol table only if using symbol compression (symboltable is non-None)
+            xobj_d["DecodeParms"] = f"<< /JBIG2Globals {symd.id} 0 R >>"
+
         xobj = Obj(
-            {
-                "Type": "/XObject",
-                "Subtype": "/Image",
-                "Width": str(width),
-                "Height": str(height),
-                "ColorSpace": "/DeviceGray",
-                "BitsPerComponent": "1",
-                "Filter": "/JBIG2Decode",
-                "DecodeParms": f"<< /JBIG2Globals {symd.id} 0 R >>",
-            },
+            xobj_d,
             contents.decode("latin1"),
         )
 
@@ -227,26 +238,44 @@ def create_pdf(symboltable: str = "symboltable", pagefiles: list = None):
 def usage(script, msg):
     """Display usage information and an optional error message."""
     if msg:
-        sys.stderr.write("%s: %s\n" % (script, msg))
-    sys.stderr.write("Usage: %s [file_basename] > out.pdf\n" % script)
+        sys.stderr.write("%s: %s\n\n" % (script, msg))
+
+    sys.stderr.write("Usage:\n"
+                     "  %s [basename] > out.pdf\n"
+                     "  %s -s [page.jb2]... > out.pdf\n"
+                     "\n"
+                     "  Read symbol table from `basename.sym' and pages from `basename.[0-9]*'\n"
+                     "    if basename not given: symbol table from `symboltable', pages from `page-*'\n"
+                     "\n"
+                     "  -s: standalone mode (generic region encoding, no global symbol table)\n"
+                     % (script, script))
+
     sys.exit(1)
 
 
 if __name__ == "__main__":
-    if len(sys.argv) == 2:
-        base_name = sys.argv[1]
-        sym = f"{base_name}.sym"
-        pages = glob.glob(f"{base_name}.[0-9]*")
-    elif len(sys.argv) == 1:
-        sym = "symboltable"
-        pages = glob.glob("page-*")
+    if '-s' in sys.argv:
+        # Standalone mode (generic region encoding, no global symbol table)
+        sym = None
+        pages = sys.argv[1:]
+        pages.remove('-s')
     else:
-        usage(sys.argv[0], "wrong number of arguments!")
+        # Symbol compression
+        if len(sys.argv) == 2:
+            base_name = sys.argv[1]
+            sym = f"{base_name}.sym"
+            pages = glob.glob(f"{base_name}.[0-9]*")
+        elif len(sys.argv) == 1:
+            sym = "symboltable"
+            pages = glob.glob("page-*")
+        else:
+            usage(sys.argv[0], "wrong number of arguments!")
 
     # Validate that the symbol table exists
-    sym_path = Path(sym)
-    if not sym_path.exists():
-        usage(sys.argv[0], f"symbol table '{sym}' not found!")
+    if sym:
+        sym_path = Path(sym)
+        if not sym_path.exists():
+            usage(sys.argv[0], f"symbol table '{sym}' not found!")
 
     # Validate that pages were found
     if not pages:
