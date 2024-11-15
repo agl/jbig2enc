@@ -28,6 +28,12 @@ example of usage:
 $ jbig2 -s -p -v *.jpg && python3 jbig2topdf.py output >out.pdf
 ```
 
+or with standalone mode:
+
+```
+$ jbig2 -p -v images/feyn.tif > feyn.jbig2 && python3 jbig2topdf.py -s feyn.jbig2 > feyn.pdf
+```
+
 to encode jbig2 files for pdf creation.
 If you want to encode an image and then view output first to include in pdf
 
@@ -38,7 +44,7 @@ $ jbig2 -s -S -p -v -O out.png *.jpg
 If you want to encode an image as jbig2 (can be view in [STDU Viewer](http://www.stdutility.com/stduviewer.html) on Windows) run:
 
 ```
-$ jbig2 -s feyn.tif >feyn.jb2
+$ jbig2 -s images/feyn.tif >feyn.jb2
 ```
 
 
