@@ -1,4 +1,4 @@
-This is an encoder for [JBIG2](fcd14492.pdf).
+This is an encoder for [JBIG2](doc/fcd14492.pdf).
 
 JBIG2 encodes bi-level (1 bpp) images using a number of clever tricks to get
 better compression than G4. This encoder can:
