@@ -38,7 +38,7 @@ $ jbig2 -s -S -p -v -O out.png *.jpg
 If you want to encode an image as jbig2 (can be view in [STDU Viewer](http://www.stdutility.com/stduviewer.html) on Windows) run:
 
 ```
-$ jbig2 -s feyn.tif >feyn.jb2
+$ jbig2 -s images/feyn.tif >feyn.jb2
 ```
 
 
