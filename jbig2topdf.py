@@ -130,9 +130,7 @@ def ref(x: int) -> str:
 
 def create_pdf(symboltable: str = "symboltable", pagefiles: list = None):
     """Creates a PDF document from a symbol table and a list of page files."""
-    if pagefiles is None:
-        pagefiles = glob.glob("page-*")
-
+    pagefiles = pagefiles or glob.glob("page-*")
     doc = Doc()
 
     # Add catalog and outlines objects
@@ -144,21 +142,22 @@ def create_pdf(symboltable: str = "symboltable", pagefiles: list = None):
     doc.add_object(outlines_obj)
     doc.add_object(pages_obj)
 
-    # Read the symbol table
-    try:
-        with open(symboltable, "rb") as sym_file:
-            symd = doc.add_object(Obj({}, sym_file.read().decode("latin1")))
-    except IOError:
-        sys.stderr.write(f"Error reading symbol table: {symboltable}\n")
-        return
+    # Read symbol table if it exists
+    symd = None
+    if symboltable:
+        try:
+            sym_file = Path(symboltable).read_bytes()
+            symd = doc.add_object(Obj({}, sym_file.decode("latin1")))
+        except IOError:
+            sys.stderr.write(f"Error reading symbol table: {symboltable}\n")
+            return
 
     page_objs = []
     pagefiles.sort()
 
     for p in pagefiles:
         try:
-            with open(p, mode="rb") as page_file:
-                contents = page_file.read()
+            contents = Path(p).read_bytes()
         except IOError:
             sys.stderr.write(f"Error reading page file: {p}\n")
             continue
@@ -174,17 +173,19 @@ def create_pdf(symboltable: str = "symboltable", pagefiles: list = None):
         yres = yres or dpi
 
         # Create XObject (image) for the page
+        lexicon = {
+            "Type": "/XObject",
+            "Subtype": "/Image",
+            "Width": str(width),
+            "Height": str(height),
+            "ColorSpace": "/DeviceGray",
+            "BitsPerComponent": "1",
+            "Filter": "/JBIG2Decode",
+        }
+        if symd:
+            lexicon["DecodeParms"] = f"<< /JBIG2Globals {symd.id} 0 R >>"
         xobj = Obj(
-            {
-                "Type": "/XObject",
-                "Subtype": "/Image",
-                "Width": str(width),
-                "Height": str(height),
-                "ColorSpace": "/DeviceGray",
-                "BitsPerComponent": "1",
-                "Filter": "/JBIG2Decode",
-                "DecodeParms": f"<< /JBIG2Globals {symd.id} 0 R >>",
-            },
+            lexicon,
             contents.decode("latin1"),
         )
 
@@ -227,13 +228,33 @@ def create_pdf(symboltable: str = "symboltable", pagefiles: list = None):
 def usage(script, msg):
     """Display usage information and an optional error message."""
     if msg:
-        sys.stderr.write("%s: %s\n" % (script, msg))
-    sys.stderr.write("Usage: %s [file_basename] > out.pdf\n" % script)
+        sys.stderr.write(f"{script}: {msg}\n")
+    sys.stderr.write(f"""
+Usage:
+  {script} [basename] > out.pdf
+  {script} -s [page.jb2]... > out.pdf
+
+  Read symbol table from `basename.sym` and pages from `basename.[0-9]*`
+    if basename not given: symbol table from `symboltable`, pages from `page-*`
+
+  -s: standalone mode (no global symbol table)
+""")
     sys.exit(1)
 
 
-if __name__ == "__main__":
-    if len(sys.argv) == 2:
+def validate_file_exists(file_path: str, script: str, error_msg: str) -> None:
+    """Validates that a file exists, otherwise exits with usage error."""
+    if not Path(file_path).exists():
+        usage(script, error_msg)
+
+
+def parse_args(script: str) -> tuple:
+    """Parses command-line arguments and returns the symbol table and page files."""
+    if "-s" in sys.argv:
+        # Standalone mode, no global symbol table
+        pages = [arg for arg in sys.argv[1:] if arg != "-s"]
+        return "", pages
+    elif len(sys.argv) == 2:
         base_name = sys.argv[1]
         sym = f"{base_name}.sym"
         pages = glob.glob(f"{base_name}.[0-9]*")
@@ -241,15 +262,16 @@ if __name__ == "__main__":
         sym = "symboltable"
         pages = glob.glob("page-*")
     else:
-        usage(sys.argv[0], "wrong number of arguments!")
+        usage(script, "wrong number of arguments!")
 
-    # Validate that the symbol table exists
-    sym_path = Path(sym)
-    if not sym_path.exists():
-        usage(sys.argv[0], f"symbol table '{sym}' not found!")
-
-    # Validate that pages were found
+    # Validate that the symbol table and pages exist
+    validate_file_exists(sym, script, f"symbol table '{sym}' not found!")
     if not pages:
-        usage(sys.argv[0], "no pages found!")
+        usage(script, "no pages found!")
 
+    return sym, pages
+
+
+if __name__ == "__main__":
+    sym, pages = parse_args(sys.argv[0])
     create_pdf(sym, pages)
