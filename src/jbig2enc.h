@@ -99,7 +99,8 @@ void jbig2_add_page(struct jbig2ctx *ctx, struct Pix *bw);
 //
 // WARNING: returns a malloced buffer which the caller must free
 // -----------------------------------------------------------------------------
-uint8_t *jbig2_pages_complete(struct jbig2ctx *ctx, int *const length);
+uint8_t *jbig2_pages_complete(struct jbig2ctx *ctx, int *const length,
+                              bool verbose=false);
 // -----------------------------------------------------------------------------
 // Encode a page.
 //

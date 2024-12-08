@@ -535,7 +535,7 @@ jbig2_add_page(struct jbig2ctx *ctx, struct Pix *input) {
 
 // see comments in .h file
 uint8_t *
-jbig2_pages_complete(struct jbig2ctx *ctx, int *const length) {
+jbig2_pages_complete(struct jbig2ctx *ctx, int *const length, bool verbose) {
   /*
      Graying support - disabled.
      It's not very clear that graying actually buys you much extra quality
@@ -659,10 +659,11 @@ jbig2_pages_complete(struct jbig2ctx *ctx, int *const length) {
     pixWrite(filenamebuf, ctx->classer->pixat->pix[i], IFF_PNG);
   }
 #endif
-  fprintf(stderr, "JBIG2 compression complete. pages:%d symbols:%d log2:%d\n",
-          ctx->classer->npages, ctx->classer->pixat->n,
-          log2up(ctx->classer->pixat->n));
-
+  if (verbose) {
+    fprintf(stderr, "JBIG2 compression complete. pages:%d symbols:%d log2:%d\n",
+            ctx->classer->npages, ctx->classer->pixat->n,
+            log2up(ctx->classer->pixat->n));
+  }
   jbGetLLCorners(ctx->classer);
 
   struct jbig2enc_ctx ectx;
