@@ -1,7 +1,20 @@
-0.29: (not yet released)
+1.00: (not yet released)
+  * Reject odd input depths that pixThresholdToBinary doesn't support.
+  * Fix build with Leptonica >=1.83
+  * Replace vs2008 solution with CMake
+  * Fix `Error heap-use-after-free`
+  * Fix typos in code
+  * Support python 3, drop support for python2
   * Rename pdf.py to jbig2topdf.py
+  * Add a A switch to set dpi for images w/o dpi information
+  * Add support for standalone .jb2
+  * Suppress a chatty informational message unless requested
 
-0.28:
+0.29 (2017-01-30)
+  * fix build with leptonica>=1.70
+  * Remove incorrect reference count update.
+
+0.28 (2012-09-19):
   * Update to the latest Leptonica (1.68)
   * autotools support, VC++ 2008 solution
   * fix binary file open mode on Windows
@@ -11,7 +24,7 @@
   * R. Hatlapatka: option to use autoThresholding. Improved version from
     bachelor thesis JBIG2 compression http://is.muni.cz/th/208155/fi_b/.
 
-0.27:
+0.27 (2009-04-29):
   * Update to the latest Leptonica (1.58)
   * Fix comments in pdf.py (thanks Dan)
 
