@@ -85,17 +85,17 @@ pixInfo(PIX *pix, const char *msg) {
 #include <stdarg.h>
 int
 asprintf(char **strp, const char *fmt, ...) {
-    va_list va;
-    va_start(va, fmt);
+  va_list va;
+  va_start(va, fmt);
 
-    const int required = vsnprintf(NULL, 0, fmt, va);
-    char *const buffer = (char *) malloc(required + 1);
-    const int ret = vsnprintf(buffer, required + 1, fmt, va);
-    *strp = buffer;
+  const int required = vsnprintf(NULL, 0, fmt, va);
+  char *const buffer = (char *) malloc(required + 1);
+  const int ret = vsnprintf(buffer, required + 1, fmt, va);
+  *strp = buffer;
 
-    va_end(va);
+  va_end(va);
 
-    return ret;
+  return ret;
 }
 #endif
 
@@ -355,13 +355,13 @@ main(int argc, char **argv) {
       char *endptr;
       long t_dpi = strtol(argv[i+1], &endptr, 10);
       if (*endptr) {
-	fprintf(stderr, "Cannot parse int value: %s\n", argv[i+1]);
-	usage(argv[0]);
-	return 1;
+    fprintf(stderr, "Cannot parse int value: %s\n", argv[i+1]);
+    usage(argv[0]);
+    return 1;
       }
       if (t_dpi <= 0 || t_dpi > 9600) {
-	fprintf(stderr, "Invalid dpi: (1..9600)\n");
-	return 12;
+        fprintf(stderr, "Invalid dpi: (1..9600)\n");
+        return 12;
       } 
       dpi = (int)t_dpi;
       i++;
@@ -548,5 +548,7 @@ main(int argc, char **argv) {
   }
 
   jbig2_destroy(ctx);
+  return 0;
+
 }
 
