@@ -43,7 +43,7 @@ enum {
 
 struct jbig2_file_header {
   u8 id[8];
-#ifndef _BIG_ENDIAN
+#ifndef __BIG_ENDIAN__
   u8 organisation_type : 1;
   u8 unknown_n_pages : 1;
   u8 reserved : 6;
@@ -60,7 +60,7 @@ struct jbig2_page_info {
   u32 height;
   u32 xres;
   u32 yres;
-#ifndef _BIG_ENDIAN
+#ifndef __BIG_ENDIAN__
   u8 is_lossless : 1;
   u8 contains_refinements : 1;
   u8 default_pixel : 1;
@@ -87,7 +87,7 @@ struct jbig2_generic_region {
   u32 y;
   u8 comb_operator;
 
-#ifndef _BIG_ENDIAN
+#ifndef __BIG_ENDIAN__
   u8 mmr : 1;
   u8 gbtemplate : 2;
   u8 tpgdon : 1;
@@ -105,7 +105,7 @@ struct jbig2_generic_region {
 } PACKED ;
 
 struct jbig2_symbol_dict {
-#ifndef _BIG_ENDIAN
+#ifndef __BIG_ENDIAN__
   u8 sdhuff:1;
   u8 sdrefagg:1;
   u8 sdhuffdh:2;
@@ -146,7 +146,7 @@ struct jbig2_text_region {
   u32 y;
   u8 comb_operator;
 
-#ifndef _BIG_ENDIAN
+#ifndef __BIG_ENDIAN__
   u8 sbcombop2:1;
   u8 sbdefpixel:1;
   u8 sbdsoffset:5;

@@ -49,7 +49,7 @@ usage(const char *argv0) {
   fprintf(stderr, "  -d --duplicate-line-removal: use TPGD in generic region coder\n");
   fprintf(stderr, "  -p --pdf: produce PDF ready data\n");
   fprintf(stderr, "  -s --symbol-mode: use text region, not generic coder\n");
-  fprintf(stderr, "  -t <threshold>: set classification threshold for symbol coder (def: 0.85)\n");
+  fprintf(stderr, "  -t <threshold>: set classification threshold for symbol coder (def: 0.92)\n");
   fprintf(stderr, "  -T <bw threshold>: set 1 bpp threshold (def: 188)\n");
   fprintf(stderr, "  -r --refine: use refinement (requires -s: lossless)\n");
   fprintf(stderr, "  -O <outfile>: dump thresholded image as PNG\n");
@@ -202,7 +202,7 @@ int
 main(int argc, char **argv) {
   bool duplicate_line_removal = false;
   bool pdfmode = false;
-  float threshold = 0.85;
+  float threshold = 0.92;
   int bw_threshold = 188;
   bool symbol_mode = false;
   bool refine = false;
@@ -308,9 +308,9 @@ main(int argc, char **argv) {
         return 1;
       }
 
-      if (threshold > 0.9 || threshold < 0.4) {
+      if (threshold > 0.97 || threshold < 0.4) {
         fprintf(stderr, "Invalid value for threshold\n");
-        fprintf(stderr, "(must be between 0.4 and 0.9)\n");
+        fprintf(stderr, "(must be between 0.4 and 0.97)\n");
         return 10;
       }
       i++;

@@ -200,7 +200,7 @@ jbig2enc_are_equivalent(PIX *const first_template, PIX *const second_template) {
           horizontal_sum += horizontal_parsed_pix_counts[i+x][j+y];
         }
       }
-      if (horizontal_sum > hline_thresh) {
+      if (horizontal_sum >= hline_thresh) {
         return 0;
       }
     }
@@ -215,7 +215,7 @@ jbig2enc_are_equivalent(PIX *const first_template, PIX *const second_template) {
         vertical_sum += vertical_parsed_pix_counts[i+x][j+y];
         }
       }
-      if (vertical_sum > vline_thresh) {
+      if (vertical_sum >= vline_thresh) {
         return 0;
       }
     }
@@ -236,7 +236,7 @@ jbig2enc_are_equivalent(PIX *const first_template, PIX *const second_template) {
           }
         }
       }
-      if ((left_cross > hline_thresh) || (right_cross > hline_thresh)) {
+      if ((left_cross >= hline_thresh) || (right_cross >= hline_thresh)) {
         return 0;
       }
     }
@@ -253,7 +253,7 @@ jbig2enc_are_equivalent(PIX *const first_template, PIX *const second_template) {
           sum += parsed_pix_counts[i+x][j+y];
         }
       }
-      if (sum > point_thresh) {
+      if (sum >= point_thresh) {
         return 0;
       }
     }
