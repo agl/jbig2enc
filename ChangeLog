@@ -9,6 +9,8 @@
   * Add a A switch to set dpi for images w/o dpi information
   * Add support for standalone .jb2
   * Suppress a chatty informational message unless requested
+  * Neat symbolic threshold 0.92
+  * Fix Endian issue on ARM #63
 
 0.29 (2017-01-30)
   * fix build with leptonica>=1.70
