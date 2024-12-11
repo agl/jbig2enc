@@ -50,6 +50,7 @@ usage(const char *argv0) {
   fprintf(stderr, "  -p --pdf: produce PDF ready data\n");
   fprintf(stderr, "  -s --symbol-mode: use text region, not generic coder\n");
   fprintf(stderr, "  -t <threshold>: set classification threshold for symbol coder (def: 0.92)\n");
+  fprintf(stderr, "  -w <weight>: set classification weight for symbol coder (def: 0.5)\n");
   fprintf(stderr, "  -T <bw threshold>: set 1 bpp threshold (def: 188)\n");
   fprintf(stderr, "  -r --refine: use refinement (requires -s: lossless)\n");
   fprintf(stderr, "  -O <outfile>: dump thresholded image as PNG\n");
@@ -202,7 +203,8 @@ int
 main(int argc, char **argv) {
   bool duplicate_line_removal = false;
   bool pdfmode = false;
-  float threshold = 0.92;
+  float threshold = 0.92f;
+  float weight = 0.5f;
   int bw_threshold = 188;
   bool symbol_mode = false;
   bool refine = false;
@@ -315,6 +317,24 @@ main(int argc, char **argv) {
       }
       i++;
       continue;
+     }
+
+    if (strcmp(argv[i], "-w") == 0) {
+      char *endptr;
+      weight = strtod(argv[i+1], &endptr);
+      if (*endptr) {
+        fprintf(stderr, "Cannot parse float value: %s\n", argv[i+1]);
+        usage(argv[0]);
+        return 1;
+      }
+
+      if (weight < 0.1 || weight > 0.9) {
+        fprintf(stderr, "Invalid value for weight\n");
+        fprintf(stderr, "(must be between 0.1 and 0.9)\n");
+        return 10;
+      }
+      i++;
+      continue;
     }
 
     if (strcmp(argv[i], "-T") == 0) {
@@ -388,7 +408,7 @@ main(int argc, char **argv) {
     return 6;
   }
 
-  struct jbig2ctx *ctx = jbig2_init(threshold, 0.5, 0, 0, !pdfmode, refine ? 10 : -1);
+  struct jbig2ctx *ctx = jbig2_init(threshold, weight, 0, 0, !pdfmode, refine ? 10 : -1);
   int pageno = -1;
 
   int numsubimages=0, subimage=0, num_pages = 0;
