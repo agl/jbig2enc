@@ -1,6 +1,5 @@
-AC_PREREQ(2.50)
-AC_INIT([jbig2enc], [0.29], [agl@imperialviolet.org], [jbig2enc-0.29],
-		[https://github.com/agl/jbig2enc])
+AC_PREREQ([2.71])
+AC_INIT([jbig2enc],[0.29],[agl@imperialviolet.org],[jbig2enc-0.29],[https://github.com/agl/jbig2enc])
 AC_CONFIG_MACRO_DIR([m4])
 AM_INIT_AUTOMAKE([-Wall -Werror foreign no-dependencies])
 
@@ -9,7 +8,7 @@ m4_ifdef([AM_PROG_AR], [AM_PROG_AR])
 LT_INIT
 
 AC_PROG_CXX
-AC_PROG_LIBTOOL
+LT_INIT
 
 # Release versioning
 GENERIC_MAJOR_VERSION=0
@@ -56,8 +55,7 @@ esac
 # Check if rpath is disabled
 AC_MSG_CHECKING(whether to use rpath)
 AC_ARG_ENABLE(rpath,
-	[AC_HELP_STRING([--disable-rpath],
-			[Patches libtool to not use rpath in the libraries produced.])],
+	[AS_HELP_STRING([--disable-rpath],[Patches libtool to not use rpath in the libraries produced.])],
 	[enable_rpath="$enableval"], [enable_rpath="yes"])
 AC_MSG_RESULT($enable_rpath)
 
