@@ -46,3 +46,8 @@ If you want to encode an image as jbig2 (can be view in [STDU Viewer](http://www
 ```
 $ jbig2 -s images/feyn.tif >feyn.jb2
 ```
+
+### Links:
+
+* [jbig2enc-samples](https://github.com/zdenop/jbig2enc-samples)
+* [jbig2enc-minidjvu](https://github.com/ImageProcessing-ElectronicPublications/jbig2enc-minidjvu)
