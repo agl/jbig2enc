@@ -47,9 +47,6 @@
 #define JBIG2_WEIGHT_MIN 0.1f
 #define JBIG2_WEIGHT_MAX 0.9f
 #define JBIG2_WEIGHT_DEF 0.5f
-#define BW_THRESHOLD_MIN 0
-#define BW_THRESHOLD_MAX 255
-#define BW_THRESHOLD_DEF 128
 
 static void
 usage(const char *argv0) {
@@ -61,7 +58,6 @@ usage(const char *argv0) {
   fprintf(stderr, "  -s --symbol-mode: use text region, not generic coder\n");
   fprintf(stderr, "  -t <threshold>: set classification threshold for symbol coder (def: %0.2f)\n", JBIG2_THRESHOLD_DEF);
   fprintf(stderr, "  -w <weight>: set classification weight for symbol coder (def: %0.2f)\n", JBIG2_WEIGHT_DEF);
-  fprintf(stderr, "  -T <bw threshold>: set 1 bpp threshold (def: %d)\n", BW_THRESHOLD_DEF);
   fprintf(stderr, "  -r --refine: use refinement (requires -s: lossless)\n");
   fprintf(stderr, "  -O <outfile>: dump thresholded image as PNG\n");
   fprintf(stderr, "  -2: upsample 2x before thresholding\n");
@@ -215,7 +211,6 @@ main(int argc, char **argv) {
   bool pdfmode = false;
   float threshold = JBIG2_THRESHOLD_DEF;
   float weight = JBIG2_WEIGHT_DEF;
-  int bw_threshold = BW_THRESHOLD_DEF;
   bool symbol_mode = false;
   bool refine = false;
   bool up2 = false, up4 = false;
@@ -320,9 +315,11 @@ main(int argc, char **argv) {
         return 1;
       }
 
-      if ((threshold < JBIG2_THRESHOLD_MIN) || (threshold > JBIG2_THRESHOLD_MAX)) {
+      if ((threshold < JBIG2_THRESHOLD_MIN) ||
+          (threshold > JBIG2_THRESHOLD_MAX)) {
         fprintf(stderr, "Invalid value for threshold\n");
-        fprintf(stderr, "(must be between %0.2f and %0.2f)\n", JBIG2_THRESHOLD_MIN, JBIG2_THRESHOLD_MAX);
+        fprintf(stderr, "(must be between %0.2f and %0.2f)\n",
+                JBIG2_THRESHOLD_MIN, JBIG2_THRESHOLD_MAX);
         return 10;
       }
       i++;
@@ -340,7 +337,8 @@ main(int argc, char **argv) {
 
       if ((weight < JBIG2_WEIGHT_MIN) || (weight > JBIG2_WEIGHT_MAX)) {
         fprintf(stderr, "Invalid value for weight\n");
-        fprintf(stderr, "(must be between %0.2f and %0.2f)\n", JBIG2_WEIGHT_MIN, JBIG2_WEIGHT_MAX);
+        fprintf(stderr, "(must be between %0.2f and %0.2f)\n",
+                JBIG2_WEIGHT_MIN, JBIG2_WEIGHT_MAX);
         return 10;
       }
       i++;
@@ -348,17 +346,7 @@ main(int argc, char **argv) {
     }
 
     if (strcmp(argv[i], "-T") == 0) {
-      char *endptr;
-      bw_threshold = strtol(argv[i+1], &endptr, 10);
-      if (*endptr) {
-        fprintf(stderr, "Cannot parse int value: %s\n", argv[i+1]);
-        usage(argv[0]);
-        return 1;
-      }
-      if (bw_threshold < BW_THRESHOLD_MIN || bw_threshold > BW_THRESHOLD_MAX) {
-        fprintf(stderr, "Invalid bw threshold: (%d..%d)\n", BW_THRESHOLD_MIN, BW_THRESHOLD_MAX);
-        return 11;
-      }
+      fprintf(stderr, "Binary thresholds 'T' are no longer used\n");
       i++;
       continue;
     }
@@ -456,7 +444,7 @@ main(int argc, char **argv) {
     if (verbose)
       pixInfo(source, "source image:");
 
-    PIX *pixl, *gray, *pixt;
+    PIX *pixl, *gray, *adapt, *pixt;
     if ((pixl = pixRemoveColormap(source, REMOVE_CMAP_BASED_ON_SRC)) == NULL) {
       fprintf(stderr, "Failed to remove colormap from %s\n", argv[i]);
       return 1;
@@ -474,14 +462,14 @@ main(int argc, char **argv) {
         fprintf(stderr, "Unsupported input image depth: %d\n", pixl->d);
         return 1;
       }
-      Pix *adapt = pixBackgroundNormSimple(gray, NULL, NULL);
+      adapt = pixCleanBackgroundToWhite(gray, NULL, NULL, 1.0, 90, 190);
       pixDestroy(&gray);
       if (up2) {
-        pixt = pixScaleGray2xLIThresh(adapt, bw_threshold);
+        pixt = pixScaleGray2xLIThresh(adapt, 220);
       } else if (up4) {
-        pixt = pixScaleGray4xLIThresh(adapt, bw_threshold);
+        pixt = pixScaleGray4xLIThresh(adapt, 220);
       } else {
-        pixt = pixThresholdToBinary(adapt, bw_threshold);
+        pixt = pixThresholdToBinary(adapt, 220);
       }
       pixDestroy(&adapt);
     } else {
