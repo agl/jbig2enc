@@ -49,7 +49,7 @@
 #define JBIG2_WEIGHT_DEF 0.5f
 #define BW_THRESHOLD_MIN 0
 #define BW_THRESHOLD_MAX 255
-#define BW_THRESHOLD_DEF 192
+#define BW_THRESHOLD_DEF 128
 
 static void
 usage(const char *argv0) {
