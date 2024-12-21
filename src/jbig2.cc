@@ -62,6 +62,7 @@ usage(const char *argv0) {
   fprintf(stderr, "  -t <threshold>: set classification threshold for symbol coder (def: %0.2f)\n", JBIG2_THRESHOLD_DEF);
   fprintf(stderr, "  -w <weight>: set classification weight for symbol coder (def: %0.2f)\n", JBIG2_WEIGHT_DEF);
   fprintf(stderr, "  -T <bw threshold>: set 1 bpp threshold (def: %d)\n", BW_THRESHOLD_DEF);
+  fprintf(stderr, "  -G --global: simply threshold for BW images\n");
   fprintf(stderr, "  -N --normalize: background clean/normalize\n");
   fprintf(stderr, "  -r --refine: use refinement (requires -s: lossless)\n");
   fprintf(stderr, "  -O <outfile>: dump thresholded image as PNG\n");
@@ -214,6 +215,7 @@ int
 main(int argc, char **argv) {
   bool duplicate_line_removal = false;
   bool pdfmode = false;
+  bool globalmode = false;
   bool bgnmode = false;
   float threshold = JBIG2_THRESHOLD_DEF;
   float weight = JBIG2_WEIGHT_DEF;
@@ -359,7 +361,14 @@ main(int argc, char **argv) {
       continue;
     }
 
-    if (strcmp(argv[i], "-N") == 0 || +strcmp(argv[i], "--normalize") == 0) {
+    if (strcmp(argv[i], "-G") == 0 ||
+        strcmp(argv[i], "--global") == 0) {
+      globalmode = true;
+      continue;
+    }
+
+    if (strcmp(argv[i], "-N") == 0 ||
+        strcmp(argv[i], "--normalize") == 0) {
       bgnmode = true;
       continue;
     }
@@ -422,8 +431,10 @@ main(int argc, char **argv) {
   struct jbig2ctx *ctx = jbig2_init(threshold, weight, 0, 0, !pdfmode, refine ? 10 : -1);
   int pageno = -1;
 
-  bwthresdelta = (bgnmode) ? 0 : 64;
-  bw_threshold = ((bw_threshold + bwthresdelta) < 256) ? (bw_threshold + bwthresdelta) : 255;
+ if (!globalmode) {
+    bwthresdelta = (bgnmode) ? 0 : 64;
+    bw_threshold = ((bw_threshold + bwthresdelta) < 256) ? (bw_threshold + bwthresdelta) : 255;
+  }
 
   int numsubimages=0, subimage=0, num_pages = 0;
   while (i < argc) {
@@ -478,7 +489,9 @@ main(int argc, char **argv) {
         fprintf(stderr, "Unsupported input image depth: %d\n", pixl->d);
         return 1;
       }
-      if (bgnmode) {
+      if (globalmode) {
+        adapt = pixClone(gray);
+      } else if (bgnmode) {
         adapt = pixBackgroundNormSimple(gray, NULL, NULL);
       } else {
         adapt = pixCleanBackgroundToWhite(gray, NULL, NULL, 1.0, 90, 190);
