@@ -1,4 +1,4 @@
-1.00: (not yet released)
+0.30: (2024-12-24)
   * Reject odd input depths that pixThresholdToBinary doesn't support.
   * Fix build with Leptonica >=1.83
   * Replace vs2008 solution with CMake
@@ -11,6 +11,10 @@
   * Suppress a chatty informational message unless requested
   * Neat symbolic threshold 0.92
   * Fix Endian issue on ARM #63
+  * Neat symbolic threshold 0.92
+  * Make the weight parameter adjustable
+  * Add lobal BW threshold on 8 bpp images
+  * Replace obsolete macro `AC_PROG_LIBTOOL'
 
 0.29 (2017-01-30)
   * fix build with leptonica>=1.70

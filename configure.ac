@@ -1,5 +1,5 @@
 AC_PREREQ([2.71])
-AC_INIT([jbig2enc],[0.29],[agl@imperialviolet.org],[jbig2enc-0.29],[https://github.com/agl/jbig2enc])
+AC_INIT([jbig2enc],[0.30],[agl@imperialviolet.org],[jbig2enc-0.30],[https://github.com/agl/jbig2enc])
 AC_CONFIG_MACRO_DIR([m4])
 AM_INIT_AUTOMAKE([-Wall -Werror foreign no-dependencies])
 
@@ -12,7 +12,7 @@ LT_INIT
 
 # Release versioning
 GENERIC_MAJOR_VERSION=0
-GENERIC_MINOR_VERSION=29
+GENERIC_MINOR_VERSION=30
 GENERIC_MICRO_VERSION=0
 
 # API version (often = GENERIC_MAJOR_VERSION.GENERIC_MINOR_VERSION)
