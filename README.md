@@ -21,6 +21,8 @@ in Acrobat, though it may well be.
 
 ## Usage
 
+_Note_: Windows Command Prompt does not support wildcard expansion, so `*.jpg` will not work. You'll need to manually expand the file names yourself.
+
 See the `jbig2enc.h` header for the high level API, or the `jbig2` program for an
 example of usage:
 
@@ -31,7 +33,7 @@ $ jbig2 -s -a -p -v *.jpg && python3 jbig2topdf.py output >out.pdf
 or with standalone mode:
 
 ```
-$ jbig2 -a -p -v images/feyn.tif > feyn.jbig2 && python3 jbig2topdf.py -s feyn.jbig2 > feyn.pdf
+$ jbig2 -a -p -v images/feyn.tif > feyn.jb2 && python3 jbig2topdf.py -s feyn.jb2 > feyn.pdf
 ```
 
 to encode jbig2 files for pdf creation.

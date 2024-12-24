@@ -6,14 +6,14 @@
   * Fix typos in code
   * Support python 3, drop support for python2
   * Rename pdf.py to jbig2topdf.py
-  * Add a A switch to set dpi for images w/o dpi information
+  * Add `-D` switch to set dpi for images w/o dpi information
   * Add support for standalone .jb2
   * Suppress a chatty informational message unless requested
   * Neat symbolic threshold 0.92
   * Fix Endian issue on ARM #63
   * Neat symbolic threshold 0.92
   * Make the weight parameter adjustable
-  * Add lobal BW threshold on 8 bpp images
+  * Add global BW threshold on 8 bpp images
   * Replace obsolete macro `AC_PROG_LIBTOOL'
 
 0.29 (2017-01-30)
