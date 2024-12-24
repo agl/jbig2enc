@@ -14,12 +14,16 @@ Release*
 *.ncb
 *.user
 *.patch
+*.pdf
 *.png
 *.jpg
 *.jb2
+*.sym
 *.tiff
 *.tif
 *.exe
+*.[0-9]{0,4}
+*.[0-9][0-9][0-9][0-9]
 .hg*
 *m4*
 config.*
