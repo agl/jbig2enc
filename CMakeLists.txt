@@ -75,6 +75,12 @@ set(libjbig2enc_hdr
 add_library(libjbig2enc ${libjbig2enc_src} ${libjbig2enc_hdr})
 set_target_properties(libjbig2enc PROPERTIES DEBUG_POSTFIX
                                              ${CMAKE_DEBUG_POSTFIX})
+if(MSVC)
+    # Linking to setargv.obj enables wildcard globbing for the
+    # command line utilities, when compiling with MSVC
+    # https://learn.microsoft.com/en-us/cpp/c-language/expanding-wildcard-arguments
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} setargv.obj")
+endif()
 
 install(
   TARGETS libjbig2enc

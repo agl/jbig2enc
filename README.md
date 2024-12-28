@@ -21,7 +21,7 @@ in Acrobat, though it may well be.
 
 ## Usage
 
-_Note_: Windows Command Prompt does not support wildcard expansion, so `*.jpg` will not work. You'll need to manually expand the file names yourself.
+_Note_: Windows Command Prompt does not support wildcard expansion, so `*.jpg` will not work. You'll need to manually expand the file names yourself or you need to use the latest git code and [MSVC build](https://learn.microsoft.com/en-us/cpp/c-language/expanding-wildcard-arguments).
 
 See the `jbig2enc.h` header for the high level API, or the `jbig2` program for an
 example of usage:
