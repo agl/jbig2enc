@@ -21,8 +21,8 @@ jobs:
       fail-fast: false
       matrix:
         config:
-          - { name: ubuntu-24.04-clang-18-autotools, os: ubuntu-24.04, cxx: clang++-18, icon: '🟦'} #installed
-          - { name: ubuntu-24.04-gcc-14-autotools, os: ubuntu-24.04, cxx: g++-14, icon: '🟨'} #installed
+          - { icon: '🟧', name: ubuntu-24.04-clang-18-autotools, os: ubuntu-24.04, cxx: clang++-18} #installed
+          - { icon: '🟨', name: ubuntu-24.04-gcc-14-autotools, os: ubuntu-24.04, cxx: g++-14} #installed
 
     steps:
     - name: '🧰 Checkout'
