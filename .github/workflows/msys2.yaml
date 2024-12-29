@@ -1,0 +1,110 @@
+name: Msys2
+
+on:
+  pull_request:
+    paths:
+      - src/**
+      - configure.ac
+      - Makefile.am
+  workflow_dispatch:
+
+jobs:
+
+  build:
+    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { icon: '🟦', sys: mingw64 }
+          - { icon: '🟨', sys: ucrt64  }
+          # - { icon: '⬛', sys: mingw32 }  error: target not found: mingw-w64-i686-leptonica
+    name: 🐜${{ matrix.icon }} ${{ matrix.sys }}
+    defaults:
+      run:
+        shell: msys2 {0}
+    steps:
+
+    - name: '🧰 Checkout'
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        persist-credentials: false
+
+    - name: '${{ matrix.icon }} Setup MSYS2'
+      uses: msys2/setup-msys2@v2
+      with:
+        msystem: ${{matrix.sys}}
+        update: true
+        install: >-
+          git
+          make
+          autoconf
+          automake
+          libtool
+          python3
+          pkg-config
+          zip
+          binutils
+        pacboy: >-
+          zlib:x
+          leptonica:p
+          gcc:p
+
+    - name: '️#️⃣ get-hash'
+      id: hash
+      run: echo "sha_short=$(git describe --tags)" >> $GITHUB_OUTPUT
+      # run: echo "sha_short=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+      # run: echo "::set-output name=sha_short::$(git rev-parse --short HEAD)"
+
+    - name: '🔧 Configure jbig2enc'
+      run: |
+           ./autogen.sh
+           ./configure '--disable-shared' 'CXXFLAGS=-g -O2 -static'
+           # ./configure '--disable-shared' 'CXXFLAGS=-g -O2'
+
+    - name: '🚧 Build and install jbig2enc'
+      run: |
+           # make LDFLAGS="-all-static"
+           make
+           make install
+
+    - name: 'ℹ️ Display version'
+      run: |
+           jbig2 -V
+
+    - name: '🏃 Run test'
+      run: |
+           jbig2 -a -p -v images/feyn.tif > feyn.jb2
+           python3 jbig2topdf.py -s feyn.jb2 > feyn.pdf
+
+    - name: '🍃 List files in the repository'
+      run: |
+           # ls -lR
+           # find /c/ -name "libstdc++-6.dll"
+           # find /c/ -name "libgcc_s_seh-1.dll"
+           # find /c/ -name "libleptonica-6.dll"
+           # ls -lR ${{ github.workspace }}
+           # dir /?
+           # dir /S
+           ls -lR /${{matrix.sys}}/bin/*.dll
+           objdump -p src/jbig2.exe | grep "DLL Name:"
+
+    - name: '📦 Make zip'
+      run: |
+        name=jbig2enc_${{ steps.hash.outputs.sha_short }}-${{matrix.sys}}
+        mkdir -p $name/{doc,lib}
+        # Copy programs and library
+        cp jbig2topdf.py src/jbig2.exe $name/
+        cp /${{matrix.sys}}/lib/{libjbig2enc.la,libjbig2enc.a} $name/lib
+        # Copy documentation files
+        cp AUTHORS ChangeLog COPYING INSTALL NEWS README.md doc/jbig2enc.html doc/PATENTS $name/doc
+        # Copy dependancies
+        cp /${{matrix.sys}}/bin/{libstdc++-6.dll,libgcc_s_seh-1.dll,libleptonica-6.dll,libpng16-16.dll,libwebp-7.dll,libjpeg-8.dll,libwebpmux-3.dll,libwinpthread-1.dll,libsharpyuv-0.dll,libtiff-6.dll,libLerc.dll,liblzma-5.dll,libgif-7.dll,libopenjp2-7.dll,libdeflate.dll,libjbig-0.dll,zlib1.dll,libzstd.dll} $name/
+        zip -r $name.zip $name/
+    - name: '⏫ Upload Build Results'
+      uses: actions/upload-artifact@v4
+      with:
+        name: jbig2enc_${{ steps.hash.outputs.sha_short }}-${{matrix.sys}}
+        path: jbig2enc_${{ steps.hash.outputs.sha_short }}-${{matrix.sys}}.zip
+        retention-days: 5
