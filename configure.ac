@@ -39,18 +39,18 @@ AM_CONDITIONAL(MINGW, false)
 #
 #############################
 AC_CANONICAL_HOST
-case $host_os in
+case "${host_os}" in
 	mingw*)
-		AC_DEFINE_UNQUOTED(MINGW,1,[This is a MinGW system])
-		AC_CHECK_LIB(ws2_32, _head_libws2_32_a,,
-			echo "Error! zlib not detected."
-			exit -1)
-		LIBS="$LIBS -lws2_32"
+		AC_DEFINE_UNQUOTED([MINGW], 1, [This is a MinGW system])
+		dnl Try to detect winsock2 on mingw32/64 systems.
+		AC_CHECK_LIB(ws2_32, [_head_libws2_32_a])
+		AC_CHECK_LIB(ws2_32, [_head_lib32_libws2_32_a])
+		AC_CHECK_LIB(ws2_32, [_head_lib64_libws2_32_a])
 		;;
-	 *)
+	*)
 		# default
 		;;
-esac 
+esac
 
 # Check if rpath is disabled
 AC_MSG_CHECKING(whether to use rpath)
