@@ -11,12 +11,21 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+      - name: Get Python changed files
+        id: changed-py-files
+        uses: tj-actions/changed-files@v45
+        with:
+          files: |
+            *.py
+            **/*.py
       - name: Install dependencies
+        if: steps.changed-py-files.outputs.any_changed == 'true'
         run: |
           python -m pip install --upgrade pip
           pip install ruff isort
       # Update output format to enable automatic inline annotations.
       - name: Run Ruff
+        if: steps.changed-py-files.outputs.any_changed == 'true'
         run: |
-          ruff check --output-format=github *.py
+          ruff check --output-format=github ${{ steps.changed-py-files.outputs.all_changed_files }}
           isort .
