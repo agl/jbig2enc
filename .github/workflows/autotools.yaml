@@ -1,0 +1,64 @@
+name: autotools
+
+on:
+  push:
+    paths:
+      - src/**
+      - configure.ac
+      - Makefile.am
+  pull_request:
+    paths:
+      - src/**
+      - configure.ac
+      - Makefile.am
+  workflow_dispatch:
+
+jobs:
+
+  linux:
+    runs-on: ${{ matrix.config.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        config:
+          - { name: ubuntu-24.04-clang-18-autotools, os: ubuntu-24.04, cxx: clang++-18, icon: '🟦'} #installed
+          - { name: ubuntu-24.04-gcc-14-autotools, os: ubuntu-24.04, cxx: g++-14, icon: '🟨'} #installed
+
+    steps:
+    - name: '🧰 Checkout'
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        persist-credentials: false
+
+    - name: '${{matrix.config.icon}} Setup ${{matrix.config.name}}'
+      run: |
+           sudo apt-get update
+           sudo apt-get install -y ${{ matrix.config.cxx }}
+           sudo apt-get install autoconf libleptonica-dev -y
+           ${{ matrix.config.cxx }} --version
+           git log -3 --pretty=format:'%h %ad %s | %an'
+
+    - name: '️#️⃣ get-hash'
+      id: hash
+      run: echo "sha_short=$(git describe --tags)" >> $GITHUB_OUTPUT
+
+    - name: '🔧 Configure jbig2enc ${{steps.hash.outputs.sha_short}}'
+      run: |
+           ./autogen.sh
+           ./configure '--disable-shared' 'CXX=${{matrix.config.cxx}}' 'CXXFLAGS=-g -O2 -static'
+
+    - name: '🚧 Build and install jbig2enc'
+      run: |
+           make
+           sudo make install
+
+    - name: 'ℹ️ Display version'
+      run: |
+           jbig2 -V
+
+    - name: '🏃 Run test'
+      run: |
+           jbig2 -a -p -v images/feyn.tif > feyn.jb2
+           python3 jbig2topdf.py -s feyn.jb2 > feyn.pdf
+      if: success() || failure()
