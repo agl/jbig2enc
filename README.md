@@ -13,7 +13,7 @@ better compression than G4. This encoder can:
 It uses the (Apache-ish licensed) Leptonica library:
   http://leptonica.com/
 
-You'll need version 1.74.
+Version 1.74 or later is required.
 
 ## Known bugs
 
