@@ -253,11 +253,11 @@ main(int argc, char **argv) {
 
       char *versionStrP;
       versionStrP = getLeptonicaVersion();
-      printf(" %s\n", versionStrP);
+      fprintf(stderr, " %s\n", versionStrP);
       lept_free(versionStrP);
 
       versionStrP = getImagelibVersions();
-      printf("  %s\n", versionStrP);
+      fprintf(stderr, "  %s\n", versionStrP);
       lept_free(versionStrP);
       return 0;
     }
