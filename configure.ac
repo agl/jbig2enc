@@ -52,25 +52,6 @@ case "${host_os}" in
 		;;
 esac
 
-# Check if rpath is disabled
-AC_MSG_CHECKING(whether to use rpath)
-AC_ARG_ENABLE(rpath,
-	[AS_HELP_STRING([--disable-rpath],[Patches libtool to not use rpath in the libraries produced.])],
-	[enable_rpath="$enableval"], [enable_rpath="yes"])
-AC_MSG_RESULT($enable_rpath)
-
-AM_CONDITIONAL([ENABLE_RPATH], [test "x$enable_rpath" = "xyes"])
-
-AC_CONFIG_COMMANDS([libtool-rpath-patch],
-	[if test "$libtool_patch_use_rpath" = "no"; then
-		sed < libtool > libtool-2 's/^hardcode_libdir_flag_spec.*$'/'hardcode_libdir_flag_spec=""/'
-		mv libtool-2 libtool
-		sed < libtool > libtool-2 's/^runpath_var=LD_RUN_PATH$'/'runpath_var=DIE_RPATH_DIE/'
-		mv libtool-2 libtool
-		chmod 755 libtool
-	fi],
-[libtool_patch_use_rpath=$enable_rpath])
-
 AC_CHECK_LIB([leptonica], [findFileFormatStream], [], [
 			echo "Error! Leptonica not detected."
 			exit -1

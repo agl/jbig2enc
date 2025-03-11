@@ -1,8 +1,5 @@
 AM_CXXFLAGS = -Wall
 AM_LDFLAGS = -Wl,-E
-if ENABLE_RPATH
-AM_LDFLAGS += -Wl,-rpath -Wl,$(libdir)
-endif
 
 lib_LTLIBRARIES = libjbig2enc.la
 libjbig2enc_la_SOURCES = jbig2enc.cc jbig2arith.cc jbig2sym.cc jbig2comparator.cc
