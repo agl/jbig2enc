@@ -47,6 +47,8 @@
 #include "jbig2segments.h"
 #include "jbig2comparator.h"
 
+#undef verbose
+
 // -----------------------------------------------------------------------------
 // Returns the version identifier as a static string.
 // -----------------------------------------------------------------------------
