@@ -769,6 +769,7 @@ jbig2_produce_page(struct jbig2ctx *ctx, int page_no,
     symseg.number = ctx->segnum++;
     symseg.type = segment_symbol_table;
     symseg.page = ctx->pdf_page_numbering ? 1 : 1 + page_no;
+    symseg.retain_bits = 1;
 
     jbig2enc_symboltable
       (&extrasymtab_ctx,
