@@ -2,28 +2,30 @@
 
 ## Prerequisites
 
-* installed [Leptonica](http://www.leptonica.org/) including development parts
-* installed [cmake](https://cmake.org/) or [autotools] (https://www.gnu.org/software/automake/manual/html_node/Autotools-Introduction.html)
-* installed C++ compiller (gcc, clang, MSVC)
-* installed [git](https://git-scm.com/)
+* Installed [Leptonica](http://www.leptonica.org/) including development parts (e.g. libleptonica-dev)
+* Installed [cmake](https://cmake.org/) or [autotools](https://www.gnu.org/software/automake/manual/html_node/Autotools-Introduction.html)
+* Installed C++ compiler (GCC, Clang, or MSVC)
+* Installed [git](https://git-scm.com/)
 
 
 
 ## Unix-like OS
 
-If you're running a Unix-like OS, such as Linux, BSD, Mac OS X or msys just run:
+If you're running a Unix-like system such as Linux, BSD, macOS, or MSYS, run:
 
 ```
 ./autogen.sh
 ./configure
 make
-make install (or sudo make install)
+make install (or: sudo make install)
 ```
 
 
+Make sure packages such as `automake`, ` libtool`, `make`, `pkg-config` and `autoconf-archive` are installed before executing the commands above.
+
 ## CMake
 
-CMake requires CMake build installation of Leptonica
+CMake requires a CMake-based build installation of Leptonica.
 
 
 ### Windows
