@@ -987,6 +987,7 @@ jbig2_encode_generic(struct Pix *const bw, const bool full_headers, const int xr
     endseg.type = segment_end_of_page;
     SEGMENT(endseg);
     endseg.number += 1;
+    endseg.page = 0;
     endseg.type = segment_end_of_file;
     SEGMENT(endseg);
   }
