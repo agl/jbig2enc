@@ -56,12 +56,18 @@ AC_CHECK_LIB([leptonica], [findFileFormatStream], [], [
 			echo "Error! Leptonica not detected."
 			exit -1
 			])
-PKG_CHECK_MODULES([LEPTONICA], [lept >= 1.74], [have_lept=true], [have_lept=false])
-if $have_lept; then
-	CPPFLAGS="$CPPFLAGS $LEPTONICA_CFLAGS"
-else
-	AC_MSG_ERROR([Leptonica 1.74 or higher is required. Try to install libleptonica-dev package.])
-fi
+# Check if PKG_CHECK_MODULES macro exists (provided by pkg-config)
+m4_ifdef([PKG_CHECK_MODULES], [
+	# Macro exists: Use pkg-config to check version and get CFLAGS
+	PKG_CHECK_MODULES([LEPTONICA], [lept >= 1.74], [have_lept=true], [have_lept=false])
+	if $have_lept; then
+		CPPFLAGS="$CPPFLAGS $LEPTONICA_CFLAGS"
+	else
+		AC_MSG_ERROR([Leptonica 1.74 or higher is required. Try to install libleptonica-dev package.])
+	fi
+], [
+	AC_MSG_ERROR([pkg-config macro not found. Please install the 'pkg-config' package.])
+])
 
 AC_CHECK_LIB([m], [sqrt], [], [
 			echo "Error! libm not detected."
