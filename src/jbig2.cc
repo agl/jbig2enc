@@ -560,6 +560,9 @@ main(int argc, char **argv) {
       ret = jbig2_encode_generic(pixt, !pdfmode, 0, 0, duplicate_line_removal,
                                  &length);
       write(1, ret, length);
+      free(ret);
+      pixDestroy(&pixt);
+      jbig2_destroy(ctx);
       return 0;
     }
 
