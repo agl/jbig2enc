@@ -406,12 +406,13 @@ jbig2enc_int(struct jbig2enc_ctx *restrict ctx, int proc, int value) {
   }
 
   // move the data in value to the top of the word
-  value <<= (32 - intencrange[i].intbits);
+  if (intencrange[i].intbits)
+    value = (u32)value << (32 - intencrange[i].intbits);
   for (int j = 0; j < intencrange[i].intbits; ++j) {
     const u8 v = (value & 0x80000000) >> 31;
     encode_bit(ctx, context, prev, v);
     // roll the next bit into place
-    value <<= 1;
+    value = (u32)value << 1;
     if (prev & 0x100) {
       // prev > 256
       prev = (((prev << 1) | v) & 0x1ff) | 0x100;
@@ -431,14 +432,15 @@ jbig2enc_iaid(struct jbig2enc_ctx *restrict ctx, int symcodelen, int value) {
   }
   const u32 mask = (1 << (symcodelen + 1)) - 1;
 
-  value <<= (32 - symcodelen);  // roll the data to the top of the word
+  if (symcodelen)
+    value = (u32)value << (32 - symcodelen);  // roll the data to the top of the word
   u32 prev = 1;
   for (int i = 0; i < symcodelen; ++i) {
     const u32 tval = prev & mask;
     const u8 v = (value & 0x80000000) >> 31;
     encode_bit(ctx, ctx->iaidctx, tval, v);
     prev = (prev << 1) | v;
-    value <<= 1;
+    value = (u32)value << 1;
   }
 }
 
