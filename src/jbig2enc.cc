@@ -377,8 +377,8 @@ jbig2enc_auto_threshold(struct jbig2ctx *ctx) {
 
 #if defined(HASH_DEBUGGING)
 static void
-print_hash_map(std::map<unsigned int, list<int> > &hashed_templates) {
-  std::map<unsigned int, list<int> >::iterator it;
+print_hash_map(std::map<unsigned int, std::list<int> > &hashed_templates) {
+  std::map<unsigned int, std::list<int> >::iterator it;
   std::list<int>::iterator it_representants;
 
   for (it = hashed_templates.begin(); it != hashed_templates.end(); it++) {
