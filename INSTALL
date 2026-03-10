@@ -2,8 +2,8 @@
 
 ## Prerequisites
 
-* Installed [Leptonica](http://www.leptonica.org/) including development parts (e.g. libleptonica-dev)
-* Installed [cmake](https://cmake.org/) or [autotools](https://www.gnu.org/software/automake/manual/html_node/Autotools-Introduction.html)
+* Installed [Leptonica](http://www.leptonica.org/) including development parts (e.g. libleptonica-dev) - Meson will download and build it if necessary
+* Installed [cmake](https://cmake.org/) or [autotools](https://www.gnu.org/software/automake/manual/html_node/Autotools-Introduction.html) or [Meson](https://mesonbuild.com/)
 * Installed C++ compiler (GCC, Clang, or MSVC)
 * Installed [git](https://git-scm.com/)
 
@@ -22,6 +22,43 @@ make install (or: sudo make install)
 
 
 Make sure packages such as `automake`, ` libtool`, `make`, `pkg-config` and `autoconf-archive` are installed before executing the commands above.
+
+## Meson
+
+The usual way on most operating systems is:
+
+```sh
+meson setup build
+meson compile -C build
+meson install -C build
+```
+
+This will set up a build directory (called `build`), compile and install the software. Meson will ask for elevated user privileges as needed.
+
+### IDEs
+
+Some IDEs, like KDevelop, already support Meson.
+
+VSCode has an extension you can install from the marketplace. Once that is set up, you can simply open the source directory in VSCode and everything will be configured automatically.
+
+### Distributions with older Meson versions
+
+If your OS distribution does not package a new enough version of Meson, you can also use Python tools to install it:
+
+#### uv (recommended)
+
+```sh
+uv tool install meson
+```
+
+### pip
+
+```sh
+pip3 install --user meson
+```
+
+You may have to add `~/.local/bin` to your `$PATH` for it to be recognized.
+
 
 ## CMake
 
