@@ -516,12 +516,8 @@ main(int argc, char **argv) {
         pixt = pixThresholdToBinary(adapt, bw_threshold);
       }
       pixDestroy(&adapt);
-      if (!segment) {
-        pixDestroy(&pixl);  // pixl is no longer needed if not segmenting
-      }
     } else {
       pixt = pixClone(pixl);
-      pixDestroy(&pixl);  // release the original
     }
     if (!pixt) {
       fprintf(stderr, "Failed to convert input image to binary\n");
@@ -555,6 +551,10 @@ main(int argc, char **argv) {
         i++;
         continue;
       }
+    }
+
+    if (pixl) {
+      pixDestroy(&pixl);
     }
 
     if (!symbol_mode) {
