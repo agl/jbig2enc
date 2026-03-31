@@ -54,7 +54,7 @@ jobs:
             pkg:
               - mingw64-cross-gcc-c++
               - mingw64-cross-pkgconf
-              - mingw64-cross-wine
+              - wine
             args:
               - --cross-file=cross.ini
               - --pkgconfig.relocatable
