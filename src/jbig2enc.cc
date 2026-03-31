@@ -202,7 +202,9 @@ unite_templates(struct jbig2ctx *ctx,
       return 1;
     }
 
-    // reindexing
+    // Reindex: redirect all naclass entries that pointed at second_template
+    // to point at new_representant instead. The PIX object for second_template
+    // will be freed when remove_templates() calls pixaRemovePix() on it.
     for (int i = 0; i < ctx->classer->naclass->n; i++) {
       int n;
       numaGetIValue(ctx->classer->naclass, i, &n);
@@ -210,29 +212,6 @@ unite_templates(struct jbig2ctx *ctx,
         numaSetValue(ctx->classer->naclass, i, new_representant);
       }
     }
-// ATTENTION: The assignment below causes memory leaks because
-// it interferes with Leptonica’s reference counting and thereby
-// prevents it from freeing the memory that it owns.
-//
-// We could just remove it and make the sanitizer happy.
-// However, because it has been around for so long, there is a
-// non-zero chance that some edge cases now depend on erroneous
-// reference counting. In other words, fixing it risks introducing
-// double-free conditions and other fun surprises along the
-// jbig2enc_auto_threshold_using_hash code path.
-//
-// TODO: Verify that resources are acquired and released correctly.
-// Cross-reference src/pixabasic.c in the Leptonica sources because
-// many of its functions have variable side effects and its API type
-// signatures only contain the const keyword when libc requires it.
-// Static analysis is unlikely to be of much use here.
-//
-// Good luck.
-#if (LIBLEPT_MAJOR_VERSION == 1 && LIBLEPT_MINOR_VERSION >= 83) || LIBLEPT_MAJOR_VERSION > 1
-    ctx->classer->pixat->pix[new_representant]->refcount += ctx->classer->pixat->pix[second_template]->refcount;
-#else
-    pixChangeRefcount(ctx->classer->pixat->pix[new_representant],pixGetRefcount(ctx->classer->pixat->pix[second_template]));
-#endif
   }
   return 0;
 }
@@ -1018,4 +997,3 @@ jbig2_encode_generic(struct Pix *const bw, const bool full_headers, const int xr
 
   return ret;
 }
-
