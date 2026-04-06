@@ -2,7 +2,7 @@ project(
     'jbig2enc',
     'cpp',
     license: 'Apache-2.0',
-    license_files: ['COPYING', 'AUTHORS'],
+    license_files: ['COPYING'],
     version: run_command('meson-support'/'version.sh', 'get-vcs', check: true).stdout().strip(),
     meson_version: '>= 1.10.0',
     default_options: {
