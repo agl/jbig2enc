@@ -1,0 +1,35 @@
+BasedOnStyle: Google
+IndentWidth: 2
+ColumnLimit: 100
+PointerAlignment: Right
+ReferenceAlignment: Right
+
+# Short statements
+AllowShortIfStatementsOnASingleLine: true
+AllowShortBlocksOnASingleLine: true
+AllowShortCaseLabelsOnASingleLine: true
+AllowShortLoopsOnASingleLine: true
+AllowShortFunctionsOnASingleLine: All
+
+# Braces and Wrapping
+BreakBeforeBraces: Attach
+AlwaysBreakAfterDefinitionReturnType: TopLevel
+AlwaysBreakAfterReturnType: None
+AlignAfterOpenBracket: Align
+AllowAllParametersOfDeclarationOnNextLine: true
+BinPackParameters: false
+BinPackArguments: false
+
+# Spacing
+SpaceBeforeParens: ControlStatements
+SpaceAfterLogicalNot: true
+SpaceAfterCStyleCast: true
+SpacesInParentheses: false
+DerivePointerAlignment: false
+
+# Others
+BreakBeforeBinaryOperators: None
+NamespaceIndentation: None
+IndentWrappedFunctionNames: false
+Standard: Cpp11
+KeepEmptyLinesAtTheStartOfBlocks: false

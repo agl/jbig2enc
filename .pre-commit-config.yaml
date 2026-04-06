@@ -1,0 +1,32 @@
+repos:
+-   repo: local
+    hooks:
+    # # test task.
+    # -   id: test
+    #     name: test
+    #     entry: echo
+    #     language: python
+    #     types_or: [ python, pyi ]
+    # Run the linter.
+    -   id: ruff
+        name: ruff
+        entry: ruff
+        language: python
+        types_or: [ python, pyi ]
+        args: [check, --fix ]
+    # Run the formatter.
+    -   id: ruff-format
+        name: ruff-format
+        entry: ruff
+        language: python
+        types_or: [ python, pyi ]
+        args: [format]
+
+- repo: https://github.com/pre-commit/mirrors-clang-format
+  rev: 'v18.1.8'
+  hooks:
+  - id: clang-format
+    types_or:
+      - "c"
+      - "c++"
+      - "json"
