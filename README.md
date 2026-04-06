@@ -13,10 +13,7 @@ better compression than G4. This encoder can:
 * Perform refinement coding and,
 * Compress multipage documents
 
-It uses the (Apache-ish licensed) Leptonica library:
-  <http://leptonica.com/>
-
-Version 1.74 or later is required.
+It uses the (Apache-ish licensed) [Leptonica library](https://github.com/danbloomberg/leptonica). Version 1.74 or later is required.
 
 ## Known bugs
 
