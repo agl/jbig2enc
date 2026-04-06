@@ -32,4 +32,8 @@ install-sh
 *.in
 missing
 ltmain.sh
+ar-lib
+compile
+.vscode/*
+local/*
 build*
