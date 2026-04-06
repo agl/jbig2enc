@@ -27,11 +27,11 @@ project(
         'libjpeg-turbo:default_library': 'static',
         'libpng:default_library': 'static',
         'libtiff:default_library': 'static',
-        'libz:default_library': 'static',
+        'zlib:default_library': 'static',
         'libjpeg-turbo:warning_level': '0',
         'libpng:warning_level': '0',
         'libtiff:warning_level': '0',
-        'libz:warning_level': '0',
+        'zlib:warning_level': '0',
     },
 )
 
