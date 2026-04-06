@@ -553,9 +553,7 @@ main(int argc, char **argv) {
       }
     }
 
-    if (pixl) {
-      pixDestroy(&pixl);
-    }
+    pixDestroy(&pixl);
 
     if (!symbol_mode) {
       int length;
