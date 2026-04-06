@@ -419,7 +419,7 @@ main(int argc, char **argv) {
       if (t_dpi <= 0 || t_dpi > 9600) {
         fprintf(stderr, "Invalid dpi: (1..9600)\n");
         return 12;
-      } 
+      }
       dpi = (int)t_dpi;
       i++;
       continue;
@@ -521,6 +521,7 @@ main(int argc, char **argv) {
     }
     if (!pixt) {
       fprintf(stderr, "Failed to convert input image to binary\n");
+      pixDestroy(&pixl);  // only alive here when segment==true && d>1
       return 1;
     }
     if (verbose)
@@ -618,4 +619,3 @@ main(int argc, char **argv) {
   return 0;
 
 }
-
