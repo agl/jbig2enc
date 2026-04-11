@@ -26,7 +26,7 @@ jobs:
     steps:
 
     - name: '🧰 Checkout'
-      uses: actions/checkout@v4
+      uses: actions/checkout@v6
       with:
         fetch-depth: 0
         persist-credentials: false
@@ -103,7 +103,7 @@ jobs:
         cp /${{matrix.sys}}/bin/{libstdc++-6.dll,libgcc_s_seh-1.dll,libleptonica-6.dll,libpng16-16.dll,libwebp-7.dll,libjpeg-8.dll,libwebpmux-3.dll,libwinpthread-1.dll,libsharpyuv-0.dll,libtiff-6.dll,libLerc.dll,liblzma-5.dll,libgif-7.dll,libopenjp2-7.dll,libdeflate.dll,libjbig-0.dll,zlib1.dll,libzstd.dll} $name/
         zip -r $name.zip $name/
     - name: '⏫ Upload Build Results'
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       with:
         name: jbig2enc_${{ steps.hash.outputs.sha_short }}-${{matrix.sys}}
         path: jbig2enc_${{ steps.hash.outputs.sha_short }}-${{matrix.sys}}.zip

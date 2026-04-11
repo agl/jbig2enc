@@ -135,7 +135,7 @@ jobs:
 
       - name: '🚀 Upload build artifact'
         if: ${{ matrix.compiler == 'mingw-w64-gcc' }}
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: jbig2enc-${{ fromJSON(steps.install.outputs.prjinfo)['version'] }}${{ github.event.pull_request.number && format('-pr{0}', github.event.pull_request.number) || '' }}-Windows-X64-${{ matrix.compiler }}
           path: artifact/*
@@ -181,7 +181,7 @@ jobs:
           echo "prjinfo=$(meson introspect --projectinfo build)" >> $GITHUB_OUTPUT
 
       - name: '🚀 Upload build artifact'
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: jbig2enc-${{ fromJSON(steps.install.outputs.prjinfo)['version'] }}${{ github.event.pull_request.number && format('-pr{0}', github.event.pull_request.number) || '' }}-${{ runner.os }}-${{ runner.arch }}-MSVC
           path: artifact/*
