@@ -61,6 +61,8 @@ jobs:
               - -Db_lto=false
               - --prefix
               - $(pwd)/artifact
+              - --licensedir
+              - .
     steps:
       - name: '🛒 Install dependencies'
         run: >
@@ -128,8 +130,7 @@ jobs:
         id: install
         if: ${{ matrix.compiler == 'mingw-w64-gcc' }}
         run: |
-          meson install -C build --skip-subprojects
-          cp COPYING artifact
+          meson install -C build
           echo "prjinfo=$(meson introspect --projectinfo build)" >> $GITHUB_OUTPUT
 
       - name: '🚀 Upload build artifact'
@@ -163,6 +164,7 @@ jobs:
           --pkgconfig.relocatable
           --buildtype debug
           --prefix "$(pwd)/artifact"
+          --licensedir .
           build
 
       - name: '🛠 Run build'
@@ -175,8 +177,7 @@ jobs:
         id: install
         shell: bash
         run: |
-          meson install -C build --skip-subprojects
-          cp COPYING artifact
+          meson install -C build
           echo "prjinfo=$(meson introspect --projectinfo build)" >> $GITHUB_OUTPUT
 
       - name: '🚀 Upload build artifact'
