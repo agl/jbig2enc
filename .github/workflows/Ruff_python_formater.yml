@@ -1,31 +1,56 @@
-name: Ruff_python_formater
+name: Python Code Quality
 
-on: [ push, pull_request ]
+on:
+  push:
+    branches: ["main", "master"]
+    paths:
+      - "**.py"
+  pull_request:
+    paths:
+      - "**.py"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: write  # needed for PR annotations
+
 
 jobs:
-  build:
+  lint-and-format:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - name: Install Python
-        uses: actions/setup-python@v5
+      - name: Checkout code
+        uses: actions/checkout@v6
         with:
-          python-version: "3.12"
-      - name: Get Python changed files
+          # Needed for changed-files to compare against base branch
+          fetch-depth: 0
+
+      - name: Install Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+
+      - name: Get changed Python files
         id: changed-py-files
-        uses: tj-actions/changed-files@v45
+        uses: step-security/changed-files@2e07db73e5ccdb319b9a6c7766bd46d39d304bad  # v47.0.5
         with:
           files: |
             *.py
             **/*.py
+
       - name: Install dependencies
         if: steps.changed-py-files.outputs.any_changed == 'true'
         run: |
           python -m pip install --upgrade pip
-          pip install ruff isort
-      # Update output format to enable automatic inline annotations.
-      - name: Run Ruff
+          pip install "ruff==0.11.4"
+
+      # Ruff handles both linting AND import sorting (replaces isort)
+      - name: Run Ruff linter
         if: steps.changed-py-files.outputs.any_changed == 'true'
         run: |
           ruff check --output-format=github ${{ steps.changed-py-files.outputs.all_changed_files }}
-          isort .
+
+      - name: Run Ruff formatter (check only)
+        if: steps.changed-py-files.outputs.any_changed == 'true'
+        run: |
+          ruff format --check --diff ${{ steps.changed-py-files.outputs.all_changed_files }}
