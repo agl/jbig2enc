@@ -1,5 +1,6 @@
 AC_PREREQ([2.71])
-AC_INIT([jbig2enc],[0.30],[agl@imperialviolet.org],[jbig2enc-0.30],[https://github.com/agl/jbig2enc])
+m4_define([jbig2enc_version], m4_esyscmd([printf %s "$(cat VERSION)"]))
+AC_INIT([jbig2enc], jbig2enc_version, [agl@imperialviolet.org], [jbig2enc-]jbig2enc_version, [https://github.com/agl/jbig2enc])
 AC_CONFIG_MACRO_DIR([m4])
 AM_INIT_AUTOMAKE([-Wall -Werror foreign no-dependencies])
 
@@ -11,9 +12,12 @@ AC_PROG_CXX
 LT_INIT
 
 # Release versioning
-GENERIC_MAJOR_VERSION=0
-GENERIC_MINOR_VERSION=30
-GENERIC_MICRO_VERSION=0
+GENERIC_MAJOR_VERSION=m4_esyscmd([printf %s "$(cut -d. -f1 VERSION)"])
+GENERIC_MINOR_VERSION=m4_esyscmd([printf %s "$(cut -d. -f2 VERSION)"])
+GENERIC_MICRO_VERSION=m4_esyscmd([printf %s "$(cut -d. -f3 VERSION)"])
+if test -z "$GENERIC_MICRO_VERSION"; then
+  GENERIC_MICRO_VERSION=0
+fi
 
 # API version (often = GENERIC_MAJOR_VERSION.GENERIC_MINOR_VERSION)
 GENERIC_API_VERSION=$GENERIC_MAJOR_VERSION.$GENERIC_MINOR_VERSION
