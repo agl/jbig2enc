@@ -44,20 +44,10 @@ so_revision = version_parts[1].to_int()  # always increment
 so_age = version_parts.get(2, '0').to_int()  # increment only for backwards-compatible API changes
 shlib_version = '@0@.@1@.@2@'.format(so_current - so_age, so_age, so_revision)
 
-# Cement version for dist tarballs so that git is not required.
-meson.add_dist_script(
-    'meson-support' / 'version.sh',
-    'set-dist',
-    meson.project_version(),
-)
 
 # Update versions in the other buildsystems and generate Autotools.
 meson.add_dist_script(
     'meson-support' / 'dist_buildsystems.sh',
-    version_clean,
-    version_parts[0],
-    version_parts[1],
-    version_parts.get(2, '0'),
 )
 
 cxx = meson.get_compiler('cpp')

@@ -1,6 +1,7 @@
 cmake_minimum_required(VERSION 3.10)
 project(jbig2enc CXX)
-set(Version "0.30")
+file(READ "${CMAKE_CURRENT_SOURCE_DIR}/VERSION" Version)
+string(STRIP "${Version}" Version)
 
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
