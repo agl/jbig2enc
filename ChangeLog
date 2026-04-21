@@ -1,3 +1,17 @@
+0.31: (2026-04-21)
+  * Fix undefined bit shifting behavior in jbig2arith.cc
+  * Free resources also when not in symbol mode
+  * Fix memory leak in unite_templates()
+  * Fix end segment page number in jbig2enc.cc
+  * Fix issue writing invalid jbig2 data for files that use per-page symtabs (#121)
+  * Add version info about leptonica and available image libs
+  * Add Github action for autotools (g++ and clang++) and msys2
+  * Add Meson build system and GHA workflows
+  * Add formatting rules
+  * Add CI release workflow
+  * Improve installation instructions and configure test for leptonica
+  * Enable wildcard globbing for MSVC built jbig2 executable (#108)
+
 0.30: (2024-12-24)
   * Reject odd input depths that pixThresholdToBinary doesn't support.
   * Fix build with Leptonica >=1.83
