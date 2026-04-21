@@ -826,7 +826,10 @@ jbig2_produce_page(struct jbig2ctx *ctx, int page_no,
     segr.len = sizeof(textreg) + sizeof(textreg_syminsts) + textdatasize;
   }
 
-  segr.retain_bits = 2;
+  // Bit 4 (value 16) in the JBIG2 referred-to segment retain flags retains the
+  // first referred-to segment (the global symbol table). Keep it alive across
+  // pages; the last page does not need to retain it any further.
+  segr.retain_bits = last_page ? 0 : 16;
   segr.page = ctx->pdf_page_numbering ? 1 : 1 + page_no;
 
   const int extrasymtab_size = extrasymtab ?
