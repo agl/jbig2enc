@@ -70,6 +70,9 @@ add_project_arguments(
     language: 'cpp',
 )
 
+# Pre-resolve giflib with required:true so wrap fallback activates.
+# Leptonica uses required:false which skips wraps entirely.
+dependency('giflib')
 lept_dep = dependency('lept', version: '>=1.74')
 dependencies = [
     lept_dep,
