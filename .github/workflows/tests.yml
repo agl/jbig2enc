@@ -1,0 +1,93 @@
+name: tests
+
+# Runs the jbig2enc Python unittest suite (tests/run.py) against a freshly
+# built jbig2 binary.  The suite is self-contained: it uses the committed
+# fixtures under images/ and locates the binary via the JBIG2_EXE env var
+# (wired up through the CTest registration in CMakeLists.txt).  Optional
+# round-trip tests (jbig2dec / Ghostscript / ImageMagick) skip when the tools
+# are absent.
+on:
+  push:
+    paths:
+      - src/**
+      - CMakeLists.txt
+      - tests/**
+      - images/**
+      - .github/workflows/tests.yml
+  pull_request:
+    paths:
+      - src/**
+      - CMakeLists.txt
+      - tests/**
+      - images/**
+      - .github/workflows/tests.yml
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
+
+jobs:
+  linux:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 'Checkout'
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: 'Install dependencies'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libleptonica-dev ninja-build
+          # Optional round-trip tools (tests skip gracefully if absent)
+          sudo apt-get install -y jbig2dec ghostscript
+          python3 --version
+
+      - name: 'Configure build'
+        run: |
+          cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -G Ninja
+
+      - name: 'Build'
+        run: cmake --build build
+
+      - name: 'Run unittest suite'
+        run: |
+          cd build
+          ctest --output-on-failure
+
+  windows:
+    runs-on: windows-latest
+    steps:
+      - name: 'Checkout'
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: 'Cache vcpkg'
+        uses: actions/cache@v6
+        with:
+          path: C:\vcpkg\installed
+          key: vcpkg-leptonica-${{ runner.os }}-${{ hashFiles('**/CMakeLists.txt') }}
+          restore-keys: vcpkg-leptonica-${{ runner.os }}-
+
+      - name: 'Install leptonica via vcpkg'
+        run: |
+          vcpkg install leptonica:x64-windows
+          vcpkg integrate install
+
+      - name: 'Configure build'
+        run: |
+          cmake -S . -B build -DCMAKE_BUILD_TYPE=Release `
+            -DCMAKE_TOOLCHAIN_FILE="C:\vcpkg\scripts\buildsystems\vcpkg.cmake" `
+            -DVCPKG_TARGET_TRIPLET=x64-windows
+
+      - name: 'Build'
+        run: cmake --build build --config Release
+
+      - name: 'Run unittest suite'
+        run: |
+          cd build
+          ctest -C Release --output-on-failure

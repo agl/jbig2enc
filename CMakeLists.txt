@@ -125,3 +125,22 @@ install(
   RUNTIME DESTINATION bin
   LIBRARY DESTINATION lib
   ARCHIVE DESTINATION lib)
+
+# ##############################################################################
+# Tests
+# ##############################################################################
+# Register the Python unittest suite (tests/run.py) with CTest so it runs
+# alongside `ctest` in the cmake CI workflow.  The suite uses the committed
+# fixtures under images/ and finds the jbig2 executable via the JBIG2_EXE
+# environment variable, which we set to the built target here (this resolves
+# to the correct path including the Debug postfix, e.g. jbig2d.exe).
+enable_testing()
+find_package(Python3 COMPONENTS Interpreter QUIET)
+if(Python3_Interpreter_FOUND)
+  add_test(
+    NAME jbig2_python_suite
+    COMMAND "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/tests/run.py"
+    WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}")
+  set_tests_properties(jbig2_python_suite PROPERTIES
+    ENVIRONMENT "JBIG2_EXE=$<TARGET_FILE:jbig2>")
+endif()

@@ -1,5 +1,4 @@
 autom4te*
-test*
 *.o
 *.a
 *.lo
