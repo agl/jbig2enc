@@ -102,9 +102,14 @@ AC_CHECK_LIB([m], [sqrt], [], [
 			exit -1
 			])
 
+# Python interpreter for the unittest suite (optional; tests skip if absent).
+AC_CHECK_PROGS([PYTHON], [python3 python])
+AM_CONDITIONAL([HAVE_PYTHON], [test "x$PYTHON" != "x"])
+
 AC_CONFIG_FILES([
 	Makefile
 	src/Makefile
 	doc/Makefile
+	test/Makefile
 ])
 AC_OUTPUT

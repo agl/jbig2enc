@@ -66,6 +66,29 @@ test(
     ],
 )
 
+byte_regression = executable(
+    'byte_regression',
+    meson.project_source_root() / 'test' / 'byte_regression.cc',
+    dependencies: dependencies,
+    link_with: lib,
+)
+
+test('byte-regression', byte_regression)
+
+# Python unittest suite (tests/run.py).  Skipped for cross builds (e.g. the
+# mingw job runs binaries under wine, which the host-Python subprocess model
+# does not handle) and when no Python interpreter is available.
+python = import('python').find_installation('python3', required: false)
+if python.found() and not meson.is_cross_build()
+  test(
+    'python-suite',
+    python,
+    args: [meson.project_source_root() / 'tests' / 'run.py'],
+    env: ['JBIG2_EXE=' + exe.full_path()],
+    depends: [exe],
+  )
+endif
+
 pkg = import('pkgconfig')
 pkg.generate(
     lib,
