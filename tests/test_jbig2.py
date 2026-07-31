@@ -1,18 +1,17 @@
 import os
 import subprocess
+import sys
 import tempfile
 import unittest
 from pathlib import Path
 
-import sys
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-from tests.test_config import (
-    JBIG2_EXE, TEST_IMAGE_PNG, TEST_IMAGE_TIF, TEST_IMAGE_JPG,
-    TEST_IMAGE_PHOTO, LEPTONICA_BIN, TOOLS, ROOT,
-)
-
+from tests.test_config import (JBIG2_EXE, LEPTONICA_BIN, ROOT, TEST_IMAGE_JPG,
+                               TEST_IMAGE_PHOTO, TEST_IMAGE_PNG,
+                               TEST_IMAGE_TIF, TOOLS)
 
 # ── helpers ──────────────────────────────────────────────────────────────────
+
 
 def _env():
     env = os.environ.copy()
@@ -56,10 +55,11 @@ def _require_image(path: Path):
         raise unittest.SkipTest(f"test image not found: {path}")
 
 
-JBIG2_MAGIC = b'\x97\x4a\x42\x32\x0d\x0a\x1a\x0a'
+JBIG2_MAGIC = b"\x97\x4a\x42\x32\x0d\x0a\x1a\x0a"
 
 
 # ── test classes ─────────────────────────────────────────────────────────────
+
 
 class TestJbig2Basic(unittest.TestCase):
     """Basic sanity tests for the jbig2 CLI."""
@@ -124,7 +124,9 @@ class TestJbig2SymbolMode(unittest.TestCase):
             proc = _run_cwd(tmp, "-s", "-p", str(TEST_IMAGE_PNG))
             self.assertEqual(proc.returncode, 0)
             self.assertTrue((Path(tmp) / "output.sym").is_file(), "output.sym missing")
-            self.assertTrue((Path(tmp) / "output.0000").is_file(), "output.0000 missing")
+            self.assertTrue(
+                (Path(tmp) / "output.0000").is_file(), "output.0000 missing"
+            )
 
     def test_symbol_mode_pdf_ready_custom_name(self):
         """-s -p with -b basename writes basename.sym and basename.0000."""
@@ -262,7 +264,10 @@ class TestJbig2Jbig2topdf(unittest.TestCase):
         cmd.extend(str(a) for a in args)
         return subprocess.run(
             cmd,
-            capture_output=True, timeout=30, cwd=tmp, env=_env(),
+            capture_output=True,
+            timeout=30,
+            cwd=tmp,
+            env=_env(),
         )
 
     def test_jbig2topdf_with_basename(self):
@@ -375,7 +380,8 @@ class TestJbig2RoundTrip(unittest.TestCase):
             compressed.write_bytes(proc.stdout)
             r = subprocess.run(
                 [str(jbig2dec), "-o", str(decoded), str(compressed)],
-                capture_output=True, timeout=30,
+                capture_output=True,
+                timeout=30,
             )
             self.assertEqual(r.returncode, 0, "jbig2dec decode failed")
             self.assertTrue(decoded.is_file())
@@ -391,16 +397,26 @@ class TestJbig2RoundTrip(unittest.TestCase):
             self.assertEqual(proc.returncode, 0)
             pdf_proc = subprocess.run(
                 [sys.executable, str(ROOT / "jbig2topdf.py"), "output"],
-                capture_output=True, timeout=30, cwd=tmp,
+                capture_output=True,
+                timeout=30,
+                cwd=tmp,
             )
             self.assertEqual(pdf_proc.returncode, 0)
             pdf = Path(tmp) / "out.pdf"
             pdf.write_bytes(pdf_proc.stdout)
             rendered = Path(tmp) / "rendered.png"
             r = subprocess.run(
-                [str(gs), "-dNOPAUSE", "-dBATCH", "-sDEVICE=png16m",
-                 f"-sOutputFile={rendered}", "-r72", str(pdf)],
-                capture_output=True, timeout=60,
+                [
+                    str(gs),
+                    "-dNOPAUSE",
+                    "-dBATCH",
+                    "-sDEVICE=png16m",
+                    f"-sOutputFile={rendered}",
+                    "-r72",
+                    str(pdf),
+                ],
+                capture_output=True,
+                timeout=60,
             )
             self.assertEqual(r.returncode, 0)
             self.assertTrue(rendered.is_file())
@@ -419,16 +435,19 @@ class TestJbig2RoundTrip(unittest.TestCase):
             self.assertEqual(proc.returncode, 0)
             pdf_proc = subprocess.run(
                 [sys.executable, str(ROOT / "jbig2topdf.py"), "output"],
-                capture_output=True, timeout=30, cwd=tmp,
+                capture_output=True,
+                timeout=30,
+                cwd=tmp,
             )
             self.assertEqual(pdf_proc.returncode, 0)
             pdf = Path(tmp) / "out.pdf"
             pdf.write_bytes(pdf_proc.stdout)
             rendered = Path(tmp) / "rendered.png"
             r = subprocess.run(
-                [str(magick), "convert", "-density", "72", str(pdf),
-                 str(rendered)],
-                capture_output=True, timeout=60, env=_env(),
+                [str(magick), "convert", "-density", "72", str(pdf), str(rendered)],
+                capture_output=True,
+                timeout=60,
+                env=_env(),
             )
             self.assertEqual(r.returncode, 0)
             self.assertTrue(rendered.is_file())
@@ -467,7 +486,8 @@ class TestJbig2SegmentPhotoDetection(unittest.TestCase):
             graphics = Path(tmp) / "out.0000.png"
             self.assertTrue(graphics.is_file(), "graphics output not produced")
             self.assertGreater(
-                graphics.stat().st_size, self.GRAPHICS_MIN_BYTES,
+                graphics.stat().st_size,
+                self.GRAPHICS_MIN_BYTES,
                 "photo region not detected (regression of issue #142)",
             )
 

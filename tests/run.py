@@ -10,6 +10,7 @@ Usage:
 Environment:
     JBIG2_EXE: path to jbig2.exe (default: build.msvc.Release/Release/jbig2.exe)
 """
+
 import os
 import sys
 import unittest
@@ -28,7 +29,11 @@ if __name__ == "__main__":
         seen = set()
         for case in suite:
             for cls in case._tests:
-                name = type(cls._tests[0]).__name__ if hasattr(cls, "_tests") else type(cls).__name__
+                name = (
+                    type(cls._tests[0]).__name__
+                    if hasattr(cls, "_tests")
+                    else type(cls).__name__
+                )
                 if name not in seen:
                     print(name)
                     seen.add(name)
