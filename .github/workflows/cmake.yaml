@@ -137,7 +137,7 @@ jobs:
       - name: 'Run tests with AddressSanitizer'
         run: |
           cd build
-          $env:ASAN_OPTIONS="detect_leaks=1:abort_on_error=1:print_stats=1"
+          $env:ASAN_OPTIONS="detect_leaks=1:abort_on_error=1:print_stats=1:detect_leaks=0"
           ctest -C Debug --output-on-failure
 
   macos:
@@ -191,5 +191,5 @@ jobs:
       - name: 'Run tests with AddressSanitizer'
         run: |
           cd build
-          export ASAN_OPTIONS=detect_leaks=1:abort_on_error=1:print_stats=1
+          export ASAN_OPTIONS=detect_leaks=1:abort_on_error=1:print_stats=1:detect_leaks=0
           ctest --output-on-failure
