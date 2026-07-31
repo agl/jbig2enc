@@ -144,7 +144,7 @@ if(Python3_Interpreter_FOUND)
     ENVIRONMENT "JBIG2_EXE=$<TARGET_FILE:jbig2>")
 endif()
 
-add_executable(byte_regression "${CMAKE_CURRENT_SOURCE_DIR}/test/byte_regression.cc")
+add_executable(byte_regression "${CMAKE_CURRENT_SOURCE_DIR}/tests/byte_regression.cc")
 target_link_libraries(byte_regression PRIVATE libjbig2enc ${Leptonica_LIBRARIES} ${LIBS})
 add_test(NAME byte_regression COMMAND $<TARGET_FILE:byte_regression>)
 
