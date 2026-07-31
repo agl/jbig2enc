@@ -15,8 +15,8 @@ TESTS = byte_regression
 if HAVE_PYTHON
 # Run the Python unittest suite (tests/run.py) as part of `make check`.
 # TESTS_ENVIRONMENT points the suite at the freshly built jbig2 binary.
-TESTS += $(top_srcdir)/tests/run_python_suite.sh
+TESTS += run_python_suite.sh
 TESTS_ENVIRONMENT = JBIG2_EXE=$(top_builddir)/src/jbig2$(EXEEXT) PYTHON=$(PYTHON) TESTS_DIR=$(top_srcdir)/tests
 endif
 
-EXTRA_DIST = $(top_srcdir)/tests/run_python_suite.sh
+EXTRA_DIST = run_python_suite.sh
