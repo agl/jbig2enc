@@ -5,10 +5,12 @@ import tempfile
 import unittest
 from pathlib import Path
 
+# fmt: off
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from tests.test_config import (JBIG2_EXE, LEPTONICA_BIN, ROOT, TEST_IMAGE_JPG,
                                TEST_IMAGE_PHOTO, TEST_IMAGE_PNG,
                                TEST_IMAGE_TIF, TOOLS)
+# fmt: on
 
 # ── helpers ──────────────────────────────────────────────────────────────────
 
