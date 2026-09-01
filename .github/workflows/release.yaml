@@ -63,7 +63,7 @@ jobs:
         run: meson dist -C build
 
       - name: '🚀 Upload release archive'
-        uses: softprops/action-gh-release@3d0d9888cb7fd7b750713d6e236d1fcb99157228  # v3.0.2
+        uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64  # v3.0.3
         with:
           draft: true
           working_directory: build/meson-dist
@@ -115,7 +115,7 @@ jobs:
         run: Compress-Archive -Path artifact/* -Destination jbig2enc-${{ fromJSON(steps.install.outputs.prjinfo)['version'] }}-${{ runner.os }}-${{ runner.arch }}-MSVC.zip
 
       - name: '🚀 Upload release archive'
-        uses: softprops/action-gh-release@3d0d9888cb7fd7b750713d6e236d1fcb99157228  # v3.0.2
+        uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64  # v3.0.3
         with:
           draft: true
           files: jbig2enc-${{ fromJSON(steps.install.outputs.prjinfo)['version'] }}-${{ runner.os }}-${{ runner.arch }}-MSVC.zip
