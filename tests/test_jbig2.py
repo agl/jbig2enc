@@ -474,12 +474,6 @@ class TestJbig2SegmentPhotoDetection(unittest.TestCase):
         _require_jbig2()
         _require_image(TEST_IMAGE_PHOTO)
 
-    # Expected to fail until the issue #142 photo-detection fix is (re-)applied
-    # to jbig2.cc (the un-cleaned mask binary passed to segment_image).  Without
-    # that fix the local adaptive path flattens photos and extracts no graphics.
-    # Once the fix lands this becomes an "unexpected success" -> remove this
-    # decorator.
-    @unittest.expectedFailure
     def test_segment_detects_photo(self):
         """-s -S on a photo-heavy image extracts a sizable graphics region."""
         with tempfile.TemporaryDirectory() as tmp:
