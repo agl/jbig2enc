@@ -16,11 +16,13 @@
 // limitations under the License.
 
 #include <map>
+#include <string>
 #include <list>
 #include <vector>
 #include <algorithm>
 
 #include <stdio.h>
+#include <stdarg.h>
 #include <string.h>
 
 #include <leptonica/allheaders.h>
@@ -748,8 +750,13 @@ jbig2_produce_page(struct jbig2ctx *ctx, int page_no,
   seg.len = sizeof(struct jbig2_page_info);
   pageinfo.width = htonl(ctx->page_width[page_no]);
   pageinfo.height = htonl(ctx->page_height[page_no]);
-  pageinfo.xres = htonl(xres == -1 ? ctx->page_xres[page_no] : xres );
-  pageinfo.yres = htonl(yres == -1 ? ctx->page_yres[page_no] : yres );
+  // Persist per-page resolution overrides so later serialization of the
+  // document state (jbig2enc_emit_json) reports the resolutions that were
+  // actually encoded, not the ones captured when the page was added.
+  if (xres != -1) ctx->page_xres[page_no] = xres;
+  if (yres != -1) ctx->page_yres[page_no] = yres;
+  pageinfo.xres = htonl(ctx->page_xres[page_no]);
+  pageinfo.yres = htonl(ctx->page_yres[page_no]);
   pageinfo.is_lossless = ctx->refinement;
 
   std::map<int, int> second_symbol_map;
@@ -995,5 +1002,118 @@ jbig2_encode_generic(struct Pix *const bw, const bool full_headers, const int xr
 
   *length = offset;
 
+  return ret;
+}
+
+// -----------------------------------------------------------------------------
+// Serialize the glyph provenance computed by the classifier as JSON.
+//
+// The classifier retains, for every component instance, the class it was
+// assigned to and the corner at which the class template is placed. This
+// information is consumed into the arithmetic-coded text regions and lost to
+// callers. jbig2enc_emit_json writes it out as a sidecar so that downstream
+// tools can use the encoder as a glyph clustering layer.
+//
+// Call after jbig2_pages_complete, which orders the placements and merges
+// duplicate templates, and after all jbig2_produce_page calls, so that any
+// per-page resolution overrides are reflected. All coordinates are raster
+// coordinates of the page at encode resolution: x is measured from the left
+// edge, y from the top edge. "ul" is the upper left corner of the template
+// placement, "ll" the lower left corner of the ink, which is the placement
+// used by the JBIG2 text region coder.
+//
+// WARNING: returns a malloced buffer which the caller must free
+// -----------------------------------------------------------------------------
+// Append formatted output to a std::string, growing past the stack buffer
+// when a formatted line does not fit (e.g. very large page dimensions or
+// coordinates).
+static void
+json_appendf(std::string *out, const char *fmt, ...) {
+  char stack_buf[96];
+  va_list ap;
+  va_start(ap, fmt);
+  const int needed = vsnprintf(stack_buf, sizeof(stack_buf), fmt, ap);
+  va_end(ap);
+  if (needed < 0) abort();
+  if (static_cast<size_t>(needed) < sizeof(stack_buf)) {
+    out->append(stack_buf, needed);
+    return;
+  }
+  std::vector<char> heap_buf(needed + 1);
+  va_start(ap, fmt);
+  vsnprintf(heap_buf.data(), heap_buf.size(), fmt, ap);
+  va_end(ap);
+  out->append(heap_buf.data(), needed);
+}
+
+uint8_t *
+jbig2enc_emit_json(struct jbig2ctx *ctx, int *const length) {
+  static const int kJsonBorderSize = 6;  // must match kBorderSize in jbig2sym.cc
+  std::string out;
+  out.reserve(4096);
+
+  const JBCLASSER *classer = ctx->classer;
+  PIXA *const templates = ctx->avg_templates ? ctx->avg_templates : classer->pixat;
+  const int nclass = templates->n;
+  const int ncomp = classer->naclass->n;
+
+  out += "{\n  \"version\": 1,\n";
+  json_appendf(&out, "  \"num_pages\": %d,\n", classer->npages);
+  json_appendf(&out, "  \"num_symbols\": %d,\n", nclass);
+  json_appendf(&out, "  \"num_instances\": %d,\n", ncomp);
+
+  out += "  \"pages\": [\n";
+  for (int p = 0; p < classer->npages; ++p) {
+    json_appendf(&out,
+                 "    {\"page\": %d, \"width\": %d, \"height\": %d, "
+                 "\"xres\": %d, \"yres\": %d}%s\n",
+                 p + 1,
+                 ctx->page_width[p],
+                 ctx->page_height[p],
+                 ctx->page_xres[p],
+                 ctx->page_yres[p],
+                 p + 1 < classer->npages ? "," : "");
+  }
+  out += "  ],\n";
+
+  // The templates in classer->pixat carry the Leptonica border; the averaged
+  // templates used with hash-based thresholding do not.
+  const int border = ctx->avg_templates ? 0 : 2 * kJsonBorderSize;
+  out += "  \"symbols\": [\n";
+  for (int c = 0; c < nclass; ++c) {
+    json_appendf(&out,
+                 "    {\"class\": %d, \"width\": %d, \"height\": %d}%s\n",
+                 c,
+                 templates->pix[c]->w - border,
+                 templates->pix[c]->h - border,
+                 c + 1 < nclass ? "," : "");
+  }
+  out += "  ],\n";
+
+  out += "  \"instances\": [\n";
+  for (int i = 0; i < ncomp; ++i) {
+    l_int32 cls, page;
+    l_float32 ulx, uly, llx, lly;
+    numaGetIValue(classer->naclass, i, &cls);
+    numaGetIValue(classer->napage, i, &page);
+    ptaGetPt(classer->ptaul, i, &ulx, &uly);
+    ptaGetPt(classer->ptall, i, &llx, &lly);
+    json_appendf(&out,
+                 "    {\"class\": %d, \"page\": %d, "
+                 "\"ul\": [%d, %d], \"ll\": [%d, %d]}%s\n",
+                 cls,
+                 page + 1,
+                 lrintf(ulx),
+                 lrintf(uly),
+                 lrintf(llx),
+                 lrintf(lly),
+                 i + 1 < ncomp ? "," : "");
+  }
+  out += "  ]\n}\n";
+
+  *length = static_cast<int>(out.size());
+  uint8_t *const ret = static_cast<uint8_t *>(malloc(out.size()));
+  if (! ret) abort();
+  memcpy(ret, out.data(), out.size());
   return ret;
 }

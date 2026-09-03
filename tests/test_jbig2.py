@@ -154,6 +154,74 @@ class TestJbig2SymbolMode(unittest.TestCase):
         proc = _run("-s", "-w", "0.6", TEST_IMAGE_PNG)
         self.assertEqual(proc.returncode, 0)
 
+    def test_emit_json(self):
+        """--emit-json (with -s) writes a glyph provenance sidecar."""
+        import json
+
+        _require_image(TEST_IMAGE_PNG)
+        _require_image(TEST_IMAGE_JPG)
+        with tempfile.TemporaryDirectory() as tmp:
+            sidecar = Path(tmp) / "provenance.json"
+            proc = _run_cwd(
+                tmp,
+                "--emit-json",
+                sidecar,
+                "-s",
+                "-p",
+                str(TEST_IMAGE_PNG),
+                str(TEST_IMAGE_JPG),
+            )
+            self.assertEqual(proc.returncode, 0, proc.stderr.decode())
+            self.assertTrue(sidecar.is_file(), "sidecar missing")
+            data = json.loads(sidecar.read_text())
+
+            self.assertEqual(data["version"], 1)
+
+            # two input images: page association and per-page geometry must
+            # both survive (a regression that assigns everything to page 1
+            # or copies page 1's geometry must fail here)
+            self.assertEqual(data["num_pages"], 2)
+            self.assertEqual(len(data["pages"]), 2)
+            self.assertEqual([p["page"] for p in data["pages"]], [1, 2])
+            from PIL import Image as PILImage
+
+            for page, image in zip(data["pages"], (TEST_IMAGE_PNG, TEST_IMAGE_JPG)):
+                width, height = PILImage.open(str(image)).size
+                self.assertEqual(page["width"], width)
+                self.assertEqual(page["height"], height)
+                self.assertGreater(page["xres"], 0)
+
+            self.assertEqual(data["num_symbols"], len(data["symbols"]))
+            self.assertEqual(data["num_instances"], len(data["instances"]))
+            self.assertGreater(data["num_symbols"], 0)
+            self.assertGreater(data["num_instances"], 0)
+            seen_pages = {inst["page"] for inst in data["instances"]}
+            self.assertEqual(seen_pages, {1, 2})
+
+            page_by_id = {p["page"]: p for p in data["pages"]}
+            heights = {s["class"]: s["height"] for s in data["symbols"]}
+            for sym in data["symbols"]:
+                self.assertGreater(sym["width"], 0)
+                self.assertGreater(sym["height"], 0)
+            for inst in data["instances"]:
+                self.assertIn(inst["class"], heights)
+                page = page_by_id[inst["page"]]
+                # ul and ll are the corners of the placement box in raster
+                # coordinates (origin at the top left, y down)
+                self.assertGreaterEqual(inst["ll"][1], inst["ul"][1])
+                self.assertAlmostEqual(
+                    inst["ll"][1] - inst["ul"][1], heights[inst["class"]], delta=2
+                )
+                self.assertLessEqual(inst["ll"][0], page["width"])
+                self.assertLessEqual(inst["ll"][1], page["height"])
+
+    def test_emit_json_requires_symbol_mode(self):
+        """--emit-json without -s is rejected."""
+        _require_image(TEST_IMAGE_PNG)
+        proc = _run("--emit-json", "-", str(TEST_IMAGE_PNG))
+        self.assertNotEqual(proc.returncode, 0)
+        self.assertIn("symbol mode", proc.stderr.decode())
+
 
 class TestJbig2DuplicateLineRemoval(unittest.TestCase):
     """TPGD duplicate-line-removal flag."""

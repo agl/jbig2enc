@@ -76,6 +76,7 @@ usage(const char *argv0) {
   fprintf(stderr, "  -a --auto-thresh: use automatic thresholding in symbol encoder\n");
   fprintf(stderr, "  -D --dpi: force dpi\n");
   fprintf(stderr, "  --no-hash: disables use of hash function for automatic thresholding\n");
+  fprintf(stderr, "  --emit-json <file>: in symbol mode, write glyph provenance (classes, placements) as JSON\n");
   fprintf(stderr, "  -V --version: version info\n");
   fprintf(stderr, "  -v: be verbose\n");
 }
@@ -220,6 +221,7 @@ main(int argc, char **argv) {
   float weight = JBIG2_WEIGHT_DEF;
   bool symbol_mode = false;
   bool refine = false;
+  const char *emit_json = NULL;
   bool up2 = false, up4 = false;
   const char *output_threshold_image = NULL;
   const char *basename = "output";
@@ -283,6 +285,13 @@ main(int argc, char **argv) {
     if (strcmp(argv[i], "-s") == 0 ||
         strcmp(argv[i], "--symbol-mode") == 0) {
       symbol_mode = true;
+      continue;
+    }
+
+    if (strcmp(argv[i], "--emit-json") == 0) {
+      if (!require_arg(argc, argv, i)) return 1;
+      emit_json = argv[i+1];
+      i++;
       continue;
     }
 
@@ -441,6 +450,12 @@ main(int argc, char **argv) {
   if (refine && !symbol_mode) {
     fprintf(stderr, "Refinement makes not sense unless in symbol mode!\n");
     fprintf(stderr, "(if you have -r, you must have -s)\n");
+    return 5;
+  }
+
+  if (emit_json && !symbol_mode) {
+    fprintf(stderr, "--emit-json only makes sense in symbol mode!\n");
+    fprintf(stderr, "(if you have --emit-json, you must have -s)\n");
     return 5;
   }
 
@@ -611,6 +626,22 @@ main(int argc, char **argv) {
     } else {
       write(1, ret, length);
     }
+    free(ret);
+  }
+
+  // Emitted after the page loop so per-page resolution overrides (library
+  // callers only; the CLI always passes -1) are reflected.
+  if (emit_json) {
+    ret = jbig2enc_emit_json(ctx, &length);
+    const int fd = open(emit_json, O_WRONLY | O_TRUNC | O_CREAT | WINBINARY, 0600);
+    if (fd < 0) abort();
+    if (write(fd, ret, length) != length) {
+      fprintf(stderr, "Failed to write \"%s\"\n", emit_json);
+      close(fd);
+      free(ret);
+      return 1;
+    }
+    close(fd);
     free(ret);
   }
 

@@ -114,6 +114,17 @@ uint8_t *jbig2_pages_complete(struct jbig2ctx *ctx, int *const length,
 uint8_t *jbig2_produce_page(struct jbig2ctx *ctx, int page_no, int xres,
                             int yres, int *const length);
 
+// -----------------------------------------------------------------------------
+// Serialize the glyph provenance computed by the classifier as JSON: one
+// entry per symbol class (exemplar dimensions) and one per component
+// instance (class, page and placement corners in raster coordinates of the
+// page at encode resolution). Call after jbig2_pages_complete and after all
+// jbig2_produce_page calls, so per-page resolution overrides are reflected.
+//
+// WARNING: returns a malloced buffer which the caller must free
+// -----------------------------------------------------------------------------
+uint8_t *jbig2enc_emit_json(struct jbig2ctx *ctx, int *const length);
+
 // WARNING: returns a malloced buffer which the caller must free
 // -----------------------------------------------------------------------------
 
