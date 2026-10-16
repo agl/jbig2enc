@@ -645,9 +645,9 @@ main(int argc, char **argv) {
       jbig2_destroy(ctx);
       return 1;
     }
-    ssize_t written = 0;
-    while (written < (ssize_t) length) {
-      const ssize_t n = write(fd, ret + written, (size_t) (length - written));
+    int written = 0;
+    while (written < length) {
+      const int n = (int) write(fd, ret + written, (size_t) (length - written));
       if (n <= 0) {
         fprintf(stderr, "Failed to write \"%s\"\n", emit_json);
         close(fd);
