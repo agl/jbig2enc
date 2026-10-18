@@ -57,6 +57,47 @@ def _require_image(path: Path):
         raise unittest.SkipTest(f"test image not found: {path}")
 
 
+def _image_size(path):
+    """Read (width, height) from a PNG or JPEG header, stdlib only."""
+    import struct
+
+    data = Path(path).read_bytes()
+    if data[:8] == b"\x89PNG\r\n\x1a\n":
+        width, height = struct.unpack(">II", data[16:24])
+        return width, height
+    if data[:2] == b"\xff\xd8":
+        # JPEG: scan the marker segments for a frame header (SOFn)
+        i = 2
+        while i + 9 < len(data):
+            if data[i] != 0xFF:
+                i += 1
+                continue
+            marker = data[i + 1]
+            if marker in (
+                0xC0,
+                0xC1,
+                0xC2,
+                0xC3,
+                0xC5,
+                0xC6,
+                0xC7,
+                0xC9,
+                0xCA,
+                0xCB,
+                0xCD,
+                0xCE,
+                0xCF,
+            ):
+                height, width = struct.unpack(">HH", data[i + 5 : i + 9])
+                return width, height
+            if marker in (0xD8, 0xD9) or 0xD0 <= marker <= 0xD7:
+                i += 2
+                continue
+            seg_len = struct.unpack(">H", data[i + 2 : i + 4])[0]
+            i += 2 + seg_len
+    raise ValueError(f"unsupported image: {path}")
+
+
 JBIG2_MAGIC = b"\x97\x4a\x42\x32\x0d\x0a\x1a\x0a"
 
 
@@ -153,6 +194,89 @@ class TestJbig2SymbolMode(unittest.TestCase):
         """-s -w <val> sets classification weight."""
         proc = _run("-s", "-w", "0.6", TEST_IMAGE_PNG)
         self.assertEqual(proc.returncode, 0)
+
+    def test_emit_json(self):
+        """--emit-json (with -s) writes a glyph provenance sidecar."""
+        import json
+
+        _require_image(TEST_IMAGE_PNG)
+        _require_image(TEST_IMAGE_JPG)
+        with tempfile.TemporaryDirectory() as tmp:
+            sidecar = Path(tmp) / "provenance.json"
+            proc = _run_cwd(
+                tmp,
+                "--emit-json",
+                sidecar,
+                "-s",
+                "-p",
+                str(TEST_IMAGE_PNG),
+                str(TEST_IMAGE_JPG),
+            )
+            self.assertEqual(proc.returncode, 0, proc.stderr.decode())
+            self.assertTrue(sidecar.is_file(), "sidecar missing")
+            data = json.loads(sidecar.read_text())
+
+            self.assertEqual(data["version"], 1)
+
+            # two input images: page association and per-page geometry must
+            # both survive (a regression that assigns everything to page 1
+            # or copies page 1's geometry must fail here)
+            self.assertEqual(data["num_pages"], 2)
+            self.assertEqual(len(data["pages"]), 2)
+            self.assertEqual([p["page"] for p in data["pages"]], [1, 2])
+
+            for page, image in zip(data["pages"], (TEST_IMAGE_PNG, TEST_IMAGE_JPG)):
+                width, height = _image_size(str(image))
+                self.assertEqual(page["width"], width)
+                self.assertEqual(page["height"], height)
+                self.assertGreater(page["xres"], 0)
+
+            self.assertEqual(data["num_symbols"], len(data["symbols"]))
+            self.assertEqual(data["num_instances"], len(data["instances"]))
+            self.assertGreater(data["num_symbols"], 0)
+            self.assertGreater(data["num_instances"], 0)
+            seen_pages = {inst["page"] for inst in data["instances"]}
+            self.assertEqual(seen_pages, {1, 2})
+
+            page_by_id = {p["page"]: p for p in data["pages"]}
+            heights = {s["class"]: s["height"] for s in data["symbols"]}
+            for sym in data["symbols"]:
+                self.assertGreater(sym["width"], 0)
+                self.assertGreater(sym["height"], 0)
+            for inst in data["instances"]:
+                self.assertIn(inst["class"], heights)
+                page = page_by_id[inst["page"]]
+                # ul and ll are the corners of the placement box in raster
+                # coordinates (origin at the top left, y down)
+                self.assertGreaterEqual(inst["ll"][1], inst["ul"][1])
+                self.assertAlmostEqual(
+                    inst["ll"][1] - inst["ul"][1], heights[inst["class"]], delta=2
+                )
+                self.assertLessEqual(inst["ll"][0], page["width"])
+                self.assertLessEqual(inst["ll"][1], page["height"])
+
+    def test_emit_json_requires_symbol_mode(self):
+        """--emit-json without -s is rejected."""
+        _require_image(TEST_IMAGE_PNG)
+        proc = _run("--emit-json", "-", str(TEST_IMAGE_PNG))
+        self.assertNotEqual(proc.returncode, 0)
+        self.assertIn("symbol mode", proc.stderr.decode())
+
+    def test_emit_json_unwritable_path(self):
+        """--emit-json to an unopenable path fails instead of aborting."""
+        _require_image(TEST_IMAGE_PNG)
+        with tempfile.TemporaryDirectory() as tmp:
+            sidecar = Path(tmp) / "no-such-dir" / "x.json"
+            proc = _run_cwd(
+                tmp,
+                "--emit-json",
+                sidecar,
+                "-s",
+                "-p",
+                str(TEST_IMAGE_PNG),
+            )
+            self.assertNotEqual(proc.returncode, 0)
+            self.assertIn("Unable to open", proc.stderr.decode())
 
 
 class TestJbig2DuplicateLineRemoval(unittest.TestCase):

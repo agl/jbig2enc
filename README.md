@@ -50,6 +50,51 @@ If you want to encode an image as jbig2 (can be view in [STDU Viewer](http://www
 jbig2 -s images/feyn.tif >feyn.jb2
 ```
 
+### Glyph provenance sidecar (`--emit-json`)
+
+In symbol mode the classifier assigns every component instance to a symbol
+class and records where the class template is placed. That information is
+consumed into the arithmetic-coded text regions and normally lost to callers.
+With `--emit-json` (requires `-s`) it is written to a JSON sidecar, so the
+encoder can double as a glyph clustering layer for downstream tools:
+
+```sh
+jbig2 -s -p -b output --emit-json output.json images/amoris.2.150.jpg
+```
+
+This writes the usual symbol mode outputs (`output.sym`, `output.0000`) plus
+`output.json` with the provenance of every instance:
+
+```json
+{
+  "version": 1,
+  "num_pages": 1,
+  "num_symbols": 929,
+  "num_instances": 3089,
+  "pages": [
+    {"page": 1, "width": 855, "height": 1263, "xres": 150, "yres": 150}
+  ],
+  "symbols": [
+    {"class": 0, "width": 18, "height": 264}
+  ],
+  "instances": [
+    {"class": 0, "page": 1, "ul": [-1, -1], "ll": [0, 263]}
+  ]
+}
+```
+
+All coordinates are raster coordinates of the page at encode resolution: `x`
+is measured from the left edge, `y` from the top edge. For each instance,
+`ul` is the upper left corner of the template placement box and `ll` the
+lower left corner of the ink, which is the placement used by the JBIG2 text
+region coder. Both corners come from the classifier's placement arrays, and
+for a component touching the top or left crop edge the anchor can fall a
+pixel outside the page raster, so small negative values as in the sample are
+expected and not an error. `symbols` holds one entry per class with the exemplar
+dimensions in pixels. Pages that were not encoded in symbol mode report a
+zero instance count. The flag is default-off and writes only to the named
+file, leaving the stdout/stderr contract unchanged.
+
 ### Links
 
 * [jbig2enc-samples](https://github.com/zdenop/jbig2enc-samples)

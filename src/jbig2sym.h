@@ -20,6 +20,11 @@
 
 struct jbig2enc_ctx;
 
+// The symbol templates carry a border of this many pixels on each side. This
+// mirrors leptonica's JB_ADDED_PIXELS border (jbclass.c), against which the
+// template dimensions and placement corners are adjusted.
+constexpr int kBorderSize = 6;
+
 // -----------------------------------------------------------------------------
 // Write a symbol table.
 //

@@ -36,6 +36,8 @@
 
 #include <cmath>
 
+#include "jbig2sym.h"
+
 #define S(i) symbols->pix[i]
 
 
@@ -83,8 +85,6 @@ class WidthSorter {  // concept: stl/StrictWeakOrdering
  private:
   const PIXA *const symbols;
 };
-
-static const int kBorderSize = 6;
 
 // see comment in .h file
 void
